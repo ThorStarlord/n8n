@@ -98,10 +98,15 @@ export declare namespace WorkflowRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
+	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity & { parentFolderId?: string }, {}>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		WorkflowEntity & { parentFolderId?: string },
+		{}
+	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
 		{},

@@ -12,6 +12,7 @@ import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@n8n/permissions';
 
 import { License } from '@/license';
+import { FolderService } from '@/services/folder.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -64,11 +65,21 @@ export async function createWorkflow(
 	user: User,
 	personalProject: Project,
 	role: WorkflowSharingRole,
+	parentFolderId?: string,
 ): Promise<WorkflowEntity> {
+	const newWorkflow = new WorkflowEntity();
+	Object.assign(newWorkflow, workflow);
+
+	if (parentFolderId) {
+		const parentFolder = await Container.get(FolderService).findFolderInProjectOrFail(
+			parentFolderId,
+			personalProject.id,
+		);
+		newWorkflow.parentFolder = parentFolder;
+	}
+
 	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
 	return await dbManager.transaction(async (transactionManager) => {
-		const newWorkflow = new WorkflowEntity();
-		Object.assign(newWorkflow, workflow);
 		const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 		const newSharedWorkflow = new SharedWorkflow();

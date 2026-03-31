@@ -1,6 +1,7 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { User, ProjectRepository } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
+import type { FolderService } from '@/services/folder.service';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
@@ -9,6 +10,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 
 jest.mock('@/permissions.ee/check-access');
 jest.mock('@/workflow-helpers');
@@ -23,6 +25,7 @@ describe('WorkflowCreationService', () => {
 	let licenseStateMock: MockProxy<LicenseState>;
 	let projectServiceMock: MockProxy<ProjectService>;
 	let projectRepositoryMock: MockProxy<ProjectRepository>;
+	let folderServiceMock: MockProxy<FolderService>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -32,6 +35,7 @@ describe('WorkflowCreationService', () => {
 		licenseStateMock = mock<LicenseState>();
 		projectServiceMock = mock<ProjectService>();
 		projectRepositoryMock = mock<ProjectRepository>();
+		folderServiceMock = mock<FolderService>();
 
 		workflowCreationService = new WorkflowCreationService(
 			mock(), // logger
@@ -47,7 +51,7 @@ describe('WorkflowCreationService', () => {
 			projectRepositoryMock,
 			mock(), // tagRepository
 			credentialsServiceMock,
-			mock(), // folderService
+			folderServiceMock,
 			enterpriseWorkflowServiceMock,
 		);
 	});
@@ -267,6 +271,67 @@ describe('WorkflowCreationService', () => {
 			 * Assert
 			 */
 			expect(userHasScopesMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('folder assignment', () => {
+		it('should throw FolderNotFoundError when parentFolderId does not exist in project', async () => {
+			/**
+			 * Arrange
+			 */
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			folderServiceMock.findFolderInProjectOrFail.mockRejectedValue(
+				new FolderNotFoundError('folder-1'),
+			);
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+
+			/**
+			 * Act & Assert
+			 */
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, {
+					projectId: 'project-1',
+					parentFolderId: 'folder-1',
+				}),
+			).rejects.toThrow(FolderNotFoundError);
+
+			expect(folderServiceMock.findFolderInProjectOrFail).toHaveBeenCalledWith(
+				'folder-1',
+				'project-1',
+			);
+		});
+
+		it('should correctly assign parentFolderId when valid', async () => {
+			/**
+			 * Arrange
+			 */
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			folderServiceMock.findFolderInProjectOrFail.mockResolvedValue({ id: 'folder-1' } as never);
+			const { transactionManager } = setupTransactionMocks();
+
+			const user = mock<User>();
+			const newWorkflow = new WorkflowEntity();
+			newWorkflow.name = 'Test';
+			newWorkflow.nodes = [];
+			newWorkflow.connections = {};
+
+			/**
+			 * Act
+			 */
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, {
+					projectId: 'project-1',
+					parentFolderId: 'folder-1',
+				}),
+			).rejects.toThrow('Stopping for test');
+
+			/**
+			 * Assert
+			 */
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.parentFolder).toEqual({ id: 'folder-1' });
 		});
 	});
 });

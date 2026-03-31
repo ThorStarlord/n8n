@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
@@ -32,39 +33,52 @@ export = {
 	createWorkflow: [
 		apiKeyHasScope('workflow:create'),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
-			const workflow = req.body;
+			const { parentFolderId, ...workflowData } = req.body;
 
-			workflow.active = false;
-			workflow.versionId = uuid();
+			workflowData.active = false;
+			workflowData.versionId = uuid();
 
 			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 				req.user.id,
 			);
 
-			await replaceInvalidCredentials(workflow, project.id);
+			await replaceInvalidCredentials(workflowData as WorkflowEntity, project.id);
 
-			addNodeIds(workflow);
-			resolveNodeWebhookIds(workflow, Container.get(NodeTypes));
+			addNodeIds(workflowData as WorkflowEntity);
+			resolveNodeWebhookIds(workflowData as WorkflowEntity, Container.get(NodeTypes));
 
-			addNodeIds(workflow);
-			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
+			addNodeIds(workflowData as WorkflowEntity);
+			try {
+				const createdWorkflow = await createWorkflow(
+					workflowData as WorkflowEntity,
+					req.user,
+					project,
+					'workflow:owner',
+					parentFolderId,
+				);
 
-			await Container.get(WorkflowHistoryService).saveVersion(
-				req.user,
-				createdWorkflow,
-				createdWorkflow.id,
-			);
+				await Container.get(WorkflowHistoryService).saveVersion(
+					req.user,
+					createdWorkflow,
+					createdWorkflow.id,
+				);
 
-			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			Container.get(EventService).emit('workflow-created', {
-				workflow: createdWorkflow,
-				user: req.user,
-				publicApi: true,
-				projectId: project.id,
-				projectType: project.type,
-			});
+				await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
+				Container.get(EventService).emit('workflow-created', {
+					workflow: createdWorkflow,
+					user: req.user,
+					publicApi: true,
+					projectId: project.id,
+					projectType: project.type,
+				});
 
-			return res.json(createdWorkflow);
+				return res.json(createdWorkflow);
+			} catch (error) {
+				if (error instanceof FolderNotFoundError) {
+					return res.status(404).json({ message: 'Folder not found' });
+				}
+				throw error;
+			}
 		},
 	],
 	transferWorkflow: [
@@ -305,8 +319,9 @@ export = {
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
+			const { parentFolderId, ...updateBody } = req.body;
 			const updateData = new WorkflowEntity();
-			Object.assign(updateData, req.body);
+			Object.assign(updateData, updateBody);
 
 			try {
 				const updatedWorkflow = await Container.get(WorkflowService).update(
@@ -317,6 +332,7 @@ export = {
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
 						publishIfActive: true,
+						parentFolderId,
 					},
 				);
 

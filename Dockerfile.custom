@@ -1,0 +1,70 @@
+# ============================================================
+# Stage 1: Builder
+# Installs all dependencies and compiles the entire monorepo.
+# This stage has all the build tools (python, g++, make) needed
+# to compile native addons like sqlite3 and isolated-vm.
+# ============================================================
+FROM node:24-alpine AS builder
+
+# Install native build tools required for sqlite3 and isolated-vm
+RUN apk add --no-cache python3 make g++ git
+
+# Install the exact pnpm version required by the monorepo
+RUN npm install -g pnpm@10.32.1
+
+WORKDIR /build
+
+# Copy workspace definition files first to leverage Docker layer caching.
+# If these don't change, Docker will reuse the cached node_modules layer.
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json tsconfig.json .npmrc ./
+COPY patches/ ./patches/
+COPY scripts/ ./scripts/
+
+# Copy all package source files
+COPY packages/ ./packages/
+
+# Install all dependencies (including running postinstall scripts for native modules).
+# DOCKER_BUILD=1 skips the lefthook git-hooks installer (requires a .git dir).
+RUN DOCKER_BUILD=1 pnpm install --frozen-lockfile
+
+# Build the entire monorepo (TypeScript -> JavaScript)
+RUN pnpm build
+
+# ============================================================
+# Stage 2: Runner
+# Lean production image. Only contains what's needed to run n8n.
+# ============================================================
+FROM node:24-alpine
+
+# Install runtime OS dependencies only (no build tools)
+RUN apk add --no-cache \
+    tini \
+    git \
+    openssh \
+    openssl \
+    graphicsmagick \
+    tzdata \
+    ca-certificates \
+    libc6-compat
+
+# Install pnpm (needed to run `pnpm start` from the monorepo)
+RUN npm install -g pnpm@10.32.1
+
+WORKDIR /home/node
+
+# Copy the entire built workspace from the builder stage.
+# --chown sets ownership at copy time, avoiding a slow recursive chown pass.
+COPY --from=builder --chown=node:node /build ./
+
+USER node
+
+# Create the n8n data directory as the node user so the volume mount is writable
+RUN mkdir -p /home/node/.n8n
+
+EXPOSE 5678
+
+# tini ensures proper signal handling (clean shutdowns)
+ENTRYPOINT ["tini", "--"]
+
+# Start n8n directly — bypasses the os-normalize.mjs dev wrapper (which requires bash)
+CMD ["node", "packages/cli/bin/n8n"]

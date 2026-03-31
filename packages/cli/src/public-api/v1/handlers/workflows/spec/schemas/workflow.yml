@@ -79,5 +79,10 @@ properties:
     type: array
     items:
       $ref: './sharedWorkflow.yml'
+  parentFolderId:
+    type: string
+    nullable: true
+    description: ID of the folder to place the workflow in. Omit to create at project root.
+    example: VmwOO9HeTEj20kxM
   activeVersion:
     $ref: './activeVersion.yml'

@@ -38,3 +38,9 @@
 !packages/@n8n/benchmark/**
 !packages/@n8n/typescript-config
 !packages/@n8n/typescript-config/**
+
+# === Dockerfile.custom (full monorepo build) ===
+!turbo.json
+!tsconfig.json
+!.npmrc
+!packages/**

@@ -103,6 +103,14 @@ export class WorkflowCreationService {
 			}
 		}
 
+		if (parentFolderId) {
+			const parentFolder = await this.folderService.findFolderInProjectOrFail(
+				parentFolderId,
+				effectiveProjectId,
+			);
+			newWorkflow.parentFolder = parentFolder;
+		}
+
 		const { manager: dbManager } = this.projectRepository;
 
 		let project: Project | null = null;
@@ -134,17 +142,6 @@ export class WorkflowCreationService {
 			}
 
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-			if (parentFolderId) {
-				try {
-					const parentFolder = await this.folderService.findFolderInProjectOrFail(
-						parentFolderId,
-						project.id,
-						transactionManager,
-					);
-					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
-				} catch {}
-			}
 
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
