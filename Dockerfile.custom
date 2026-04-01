@@ -28,7 +28,7 @@ COPY packages/ ./packages/
 RUN DOCKER_BUILD=1 pnpm install --frozen-lockfile
 
 # Build the entire monorepo (TypeScript -> JavaScript)
-RUN pnpm build
+RUN NODE_OPTIONS=--max-old-space-size=6144 pnpm build
 
 # ============================================================
 # Stage 2: Runner
@@ -64,7 +64,6 @@ RUN mkdir -p /home/node/.n8n
 EXPOSE 5678
 
 # tini ensures proper signal handling (clean shutdowns)
-ENTRYPOINT ["tini", "--"]
+ENTRYPOINT ["tini", "--", "node", "/home/node/packages/cli/bin/n8n"]
 
-# Start n8n directly — bypasses the os-normalize.mjs dev wrapper (which requires bash)
-CMD ["node", "packages/cli/bin/n8n"]
+CMD []
