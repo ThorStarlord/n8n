@@ -1,8 +1,10 @@
-import { FolderRepository, ProjectRepository } from '@n8n/db';
+import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { FolderService } from '@/services/folder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 import type { ListQuery } from '@/requests';
+import type { User } from '@n8n/db';
 
 export async function getFolders(userId: string, options: ListQuery.Options) {
 	const personalProject =
@@ -39,16 +41,25 @@ export async function updateFolder(
 	});
 }
 
-export async function deleteFolder(userId: string, folderId: string) {
-	const personalProject =
-		await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
-	const folderRepo = Container.get(FolderRepository);
-	const folder = await folderRepo.findOneOrFailFolderInProject(folderId, personalProject.id);
-	// Using default delete behavior from FolderService (which moves contents to root and archives)
-	return await Container.get(FolderService).deleteFolder(
-		{ id: userId } as any,
-		folderId,
-		personalProject.id,
-		{},
+export async function deleteFolder(user: User, folderId: string, forceDelete: boolean = false) {
+	const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		user.id,
 	);
+	const folderRepo = Container.get(FolderRepository);
+	// Ensure folder exists
+	await folderRepo.findOneOrFailFolderInProject(folderId, personalProject.id);
+
+	if (forceDelete) {
+		const workflowIds = await Container.get(WorkflowRepository).getAllWorkflowIdsInHierarchy(
+			folderId,
+			personalProject.id,
+		);
+		const workflowService = Container.get(WorkflowService);
+		for (const wId of workflowIds) {
+			await workflowService.delete(user, wId, true); // true = publicApi
+		}
+	}
+
+	// Using default delete behavior from FolderService (which moves contents to root and archives if not already deleted)
+	return await Container.get(FolderService).deleteFolder(user, folderId, personalProject.id, {});
 }

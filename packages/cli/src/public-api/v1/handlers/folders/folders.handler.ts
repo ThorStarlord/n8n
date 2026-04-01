@@ -71,9 +71,10 @@ export = {
 	deleteFolder: [
 		async (req: any, res: express.Response) => {
 			const { id } = req.params;
+			const forceDelete = req.query.forceDelete === 'true';
 
 			try {
-				await foldersService.deleteFolder(req.user.id, id);
+				await foldersService.deleteFolder(req.user, id, forceDelete);
 				return res.status(204).send();
 			} catch (error) {
 				return res.status(404).json({ message: 'Folder not found' });

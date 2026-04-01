@@ -82,7 +82,7 @@ properties:
   parentFolderId:
     type: string
     nullable: true
-    description: ID of the folder to place the workflow in. Omit to create at project root.
+    description: ID of the folder to place the workflow in. Omit to create at project root. Pass 'root' to move an existing workflow to the root directory.
     example: VmwOO9HeTEj20kxM
   activeVersion:
     $ref: './activeVersion.yml'

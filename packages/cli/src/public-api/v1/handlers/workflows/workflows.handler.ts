@@ -57,6 +57,11 @@ export = {
 					parentFolderId,
 				);
 
+				const workflowResponse = {
+					...createdWorkflow,
+					parentFolderId: createdWorkflow.parentFolder?.id || parentFolderId || null,
+				};
+
 				await Container.get(WorkflowHistoryService).saveVersion(
 					req.user,
 					createdWorkflow,
@@ -72,7 +77,7 @@ export = {
 					projectType: project.type,
 				});
 
-				return res.json(createdWorkflow);
+				return res.json(workflowResponse);
 			} catch (error) {
 				if (error instanceof FolderNotFoundError) {
 					return res.status(404).json({ message: 'Folder not found' });
@@ -129,7 +134,20 @@ export = {
 					includeTags: !Container.get(GlobalConfig).tags.disabled,
 					includeActiveVersion: true,
 				},
+				// We need to pass eager/relations options somehow?
+				// Wait, WorkflowFinderService handles this. I should just use `findWorkflowForUser` then fetch it!
 			);
+
+			if (workflow) {
+				// We need the parentFolder to safely attach parentFolderId
+				// WorkflowFinderService does not take extra relations yet. So we can just fetch it manually if missing.
+				const workflowWithFolder = await Container.get(WorkflowRepository).findOne({
+					where: { id },
+					relations: ['parentFolder'],
+				});
+				if (workflowWithFolder?.parentFolder)
+					Object.assign(workflow, { parentFolder: workflowWithFolder.parentFolder });
+			}
 
 			if (!workflow) {
 				// user trying to access a workflow they do not own
@@ -147,7 +165,12 @@ export = {
 				publicApi: true,
 			});
 
-			return res.json(workflow);
+			const { parentFolder, ...workflowResponse } = {
+				...workflow,
+				parentFolderId: workflow.parentFolder?.id || null,
+			} as WorkflowEntity & { parentFolderId: string | null };
+
+			return res.json(workflowResponse);
 		},
 	],
 	getWorkflowVersion: [
@@ -297,7 +320,7 @@ export = {
 				selectFields.push('pinData');
 			}
 
-			const relations = ['shared', 'activeVersion'];
+			const relations = ['shared', 'activeVersion', 'parentFolder'];
 			if (!Container.get(GlobalConfig).tags.disabled) {
 				relations.push('tags');
 			}
@@ -320,8 +343,16 @@ export = {
 				publicApi: true,
 			});
 
+			const workflowsResponse = workflows.map((workflow) => {
+				const { parentFolder, ...response } = {
+					...workflow,
+					parentFolderId: workflow.parentFolder?.id || null,
+				} as WorkflowEntity & { parentFolderId: string | null };
+				return response;
+			});
+
 			return res.json({
-				data: workflows,
+				data: workflowsResponse,
 				nextCursor: encodeNextCursor({
 					offset,
 					limit,
@@ -352,7 +383,17 @@ export = {
 					},
 				);
 
-				return res.json(updatedWorkflow);
+				const updatedWorkflowWithFolder = await Container.get(WorkflowRepository).findOne({
+					where: { id },
+					relations: ['parentFolder'],
+				});
+
+				const workflowResponse = {
+					...updatedWorkflow,
+					parentFolderId: updatedWorkflowWithFolder?.parentFolder?.id || parentFolderId || null,
+				};
+
+				return res.json(workflowResponse);
 			} catch (error) {
 				if (error instanceof NotFoundError) {
 					return res.status(404).json({ message: 'Not Found' });

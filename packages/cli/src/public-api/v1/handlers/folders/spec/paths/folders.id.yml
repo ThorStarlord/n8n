@@ -64,6 +64,13 @@ delete:
       required: true
       schema:
         type: string
+    - name: forceDelete
+      in: query
+      required: false
+      description: Set this to true to permanently delete all workflows in this folder hierarchy instead of archiving them.
+      schema:
+        type: boolean
+        example: true
   responses:
     '204':
       description: Folder deleted successfully
