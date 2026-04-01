@@ -95,6 +95,8 @@ export declare namespace WorkflowRequest {
 			name?: string;
 			projectId?: string;
 			excludePinnedData?: boolean;
+			parentFolderId?: string;
+			recursive?: string;
 		}
 	>;
 
@@ -280,6 +282,32 @@ export declare namespace DataTableRequest {
 			returnData?: string | boolean;
 			dryRun?: string | boolean;
 		}
+	>;
+}
+
+// ----------------------------------
+//           /folders
+// ----------------------------------
+
+export declare namespace FolderRequest {
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+		}
+	>;
+
+	type Create = AuthenticatedRequest<{}, {}, { name: string; parentFolderId?: string }, {}>;
+	type Get = AuthenticatedRequest<{ id: string }>;
+	type Delete = Get;
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{ name?: string; parentFolderId?: string }
 	>;
 }
 

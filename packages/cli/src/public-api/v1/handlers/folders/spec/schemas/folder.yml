@@ -1,0 +1,23 @@
+type: object
+properties:
+  id:
+    type: string
+    readOnly: true
+    example: VmwOO9HeTEj20kxM
+  name:
+    type: string
+    example: My Folder
+  parentFolderId:
+    type: string
+    nullable: true
+    example: 0rtUt1wbLX592XDd
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true
+required:
+  - name

@@ -189,6 +189,8 @@ export = {
 				tags,
 				name,
 				projectId,
+				parentFolderId,
+				recursive = 'true',
 			} = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
@@ -257,6 +259,20 @@ export = {
 				}
 
 				where.id = In(workflowIds);
+			}
+
+			if (parentFolderId) {
+				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+					req.user.id,
+				);
+				if (recursive === 'true') {
+					const workflowIdsInHierarchy = await Container.get(
+						WorkflowRepository,
+					).getAllWorkflowIdsInHierarchy(parentFolderId, project.id);
+					where.id = In(workflowIdsInHierarchy);
+				} else {
+					where.parentFolder = { id: parentFolderId };
+				}
 			}
 
 			const selectFields: Array<keyof WorkflowEntity> = [

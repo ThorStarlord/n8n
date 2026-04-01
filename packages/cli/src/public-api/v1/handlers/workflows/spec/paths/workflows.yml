@@ -69,6 +69,20 @@ get:
       schema:
         type: boolean
         example: true
+    - name: parentFolderId
+      in: query
+      required: false
+      description: Filter by parent folder ID
+      schema:
+        type: string
+        example: VmwOO9HeTEj20kxM
+    - name: recursive
+      in: query
+      required: false
+      description: Set to true to include sub-folders (defaults to true)
+      schema:
+        type: boolean
+        example: true
     - $ref: '../../../../shared/spec/parameters/limit.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
   responses:

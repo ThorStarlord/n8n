@@ -1,0 +1,71 @@
+get:
+  x-eov-operation-id: getFolder
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folders
+  summary: Retrieve a specific folder
+  description: Get folder details by ID.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: A folder object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/folder.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+
+patch:
+  x-eov-operation-id: updateFolder
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folders
+  summary: Update a folder
+  description: Update a folder's name or its parent folder ID.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    description: Folder data to update.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/folder.yml'
+    required: true
+  responses:
+    '200':
+      description: Updated folder object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/folder.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+
+delete:
+  x-eov-operation-id: deleteFolder
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folders
+  summary: Delete a folder
+  description: Remove a folder and its contents.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    '204':
+      description: Folder deleted successfully
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

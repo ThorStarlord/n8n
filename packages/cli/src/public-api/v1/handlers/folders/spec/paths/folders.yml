@@ -1,0 +1,53 @@
+get:
+  x-eov-operation-id: getFolders
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folders
+  summary: Retrieve all folders
+  description: Retrieve all folders from your instance.
+  parameters:
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '../schemas/folder.yml'
+              nextCursor:
+                type: string
+                nullable: true
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+
+post:
+  x-eov-operation-id: createFolder
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folders
+  summary: Create a folder
+  description: Create a folder in your instance.
+  requestBody:
+    description: Created folder object.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/folder.yml'
+    required: true
+  responses:
+    '201':
+      description: A folder object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/folder.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

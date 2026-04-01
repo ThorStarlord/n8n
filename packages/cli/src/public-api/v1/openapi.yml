@@ -36,6 +36,8 @@ tags:
     description: Operations about data tables and their rows
   - name: Projects
     description: Operations about projects
+  - name: Folders
+    description: Operations about folders
   - name: Discover
     description: API capability discovery
 
@@ -66,6 +68,10 @@ paths:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
+  /folders:
+    $ref: './handlers/folders/spec/paths/folders.yml'
+  /folders/{id}:
+    $ref: './handlers/folders/spec/paths/folders.id.yml'
   /workflows:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:
