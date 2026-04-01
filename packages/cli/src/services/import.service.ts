@@ -19,6 +19,7 @@ import { readdir, readFile } from 'fs/promises';
 
 import { replaceInvalidCredentials } from '@/workflow-helpers';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
+import { FolderService } from '@/services/folder.service';
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
@@ -57,6 +58,7 @@ export class ImportService {
 		private readonly cipher: Cipher,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
+		private readonly folderService: FolderService,
 	) {}
 
 	async initRecords() {
@@ -64,7 +66,11 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: IWorkflowWithVersionMetadata[], projectId: string) {
+	async importWorkflows(
+		workflows: IWorkflowWithVersionMetadata[],
+		projectId: string,
+		parentFolderIdOverride?: string,
+	) {
 		await this.initRecords();
 
 		const { manager: dbManager } = this.credentialsRepository;
@@ -110,6 +116,8 @@ export class ImportService {
 		await dbManager.transaction(async (tx) => {
 			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
 
+			const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
+
 			// Upsert all workflows
 			for (const workflow of workflows) {
 				// Always generate a new versionId on import to ensure proper history ordering
@@ -124,6 +132,27 @@ export class ImportService {
 				workflow.active = false;
 				workflow.activeVersionId = null;
 
+				// Resolve folder: CLI override takes precedence over folder in the workflow JSON.
+				// parentFolderId is present on the raw JSON (IWorkflowToImport) but not on
+				// IWorkflowWithVersionMetadata, so we read it via runtime cast.
+				const rawFolderId = (workflow as unknown as { parentFolderId?: string | null })
+					.parentFolderId;
+				const targetFolderId = parentFolderIdOverride ?? rawFolderId ?? null;
+				if (targetFolderId) {
+					try {
+						workflow.parentFolder = await this.folderService.findFolderInProjectOrFail(
+							targetFolderId,
+							personalProject.id,
+							tx,
+						);
+					} catch {
+						// Folder doesn't exist in this project — fall back to project root
+						workflow.parentFolder = null;
+					}
+				} else {
+					workflow.parentFolder = null;
+				}
+
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
@@ -132,8 +161,6 @@ export class ImportService {
 				if (oldActiveVersionId) {
 					workflowsNeedingPublishHistory.push({ workflowId, versionId: oldActiveVersionId });
 				}
-
-				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
 				// Create relationship if the workflow was inserted instead of updated.
 				if (!existingWorkflowIds.has(workflow.id)) {

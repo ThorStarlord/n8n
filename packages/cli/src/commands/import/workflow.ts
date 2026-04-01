@@ -8,6 +8,7 @@ import {
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { FolderService } from '@/services/folder.service';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import glob from 'fast-glob';
 import fs from 'fs';
@@ -74,6 +75,7 @@ const flagsSchema = z.object({
 		.string()
 		.describe('The ID of the project to assign the imported workflows to')
 		.optional(),
+	parentFolderId: z.string().describe('The ID of the folder to import workflows into').optional(),
 });
 
 @Command({
@@ -114,6 +116,13 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const project = await this.getProject(flags.userId, flags.projectId);
 
+		if (flags.parentFolderId) {
+			await Container.get(FolderService).findFolderInProjectOrFail(
+				flags.parentFolderId,
+				project.id,
+			);
+		}
+
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
 		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
@@ -124,7 +133,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id);
+		await Container.get(ImportService).importWorkflows(workflows, project.id, flags.parentFolderId);
 
 		this.reportSuccess(workflows.length);
 	}

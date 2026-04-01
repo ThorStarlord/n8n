@@ -53,6 +53,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
+	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
@@ -825,8 +826,8 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	}
 }
 
-async function onImportWorkflowUrlEvent(data: IDataObject) {
-	const workflowData = await fetchWorkflowDataFromUrl(data.url as string);
+async function onImportWorkflowUrlEvent(data: { url: string; parentFolderId?: string }) {
+	const workflowData = await fetchWorkflowDataFromUrl(data.url);
 	if (!workflowData) {
 		return;
 	}
@@ -834,6 +835,10 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 	await importWorkflowData(workflowData, 'url', {
 		viewport: viewportBoundaries.value,
 	});
+
+	if (data.parentFolderId && !editableWorkflow.value.id) {
+		void router.replace({ query: { ...route.query, parentFolderId: data.parentFolderId } });
+	}
 
 	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
 }
@@ -1722,6 +1727,16 @@ onMounted(async () => {
 		if (route.query.settings) {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			void router.replace({ query: { settings: undefined } });
+		}
+
+		const autoImport = route.query.autoImport as string | undefined;
+		if (autoImport) {
+			void router.replace({ query: { ...route.query, autoImport: undefined } });
+			if (autoImport === 'url') {
+				uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
+			} else if (autoImport === 'file') {
+				nodeViewEventBus.emit('importWorkflowFromFile');
+			}
 		}
 	} finally {
 		isLoading.value = false;

@@ -99,6 +99,7 @@ describe('ImportService', () => {
 			mockCipher,
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
+			mock(),
 		);
 	});
 

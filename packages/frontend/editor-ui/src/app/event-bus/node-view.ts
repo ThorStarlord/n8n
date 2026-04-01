@@ -12,7 +12,7 @@ export interface NodeViewEventBusEvents {
 	importWorkflowData: IDataObject;
 
 	/** Command to import a workflow from given URL */
-	importWorkflowUrl: IDataObject;
+	importWorkflowUrl: { url: string; parentFolderId?: string };
 
 	'runWorkflowButton:mouseenter': never;
 

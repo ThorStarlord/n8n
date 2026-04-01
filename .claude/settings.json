@@ -11,7 +11,9 @@
       "Bash(pnpm typecheck:*)",
       "Bash(popd)",
       "Bash(pushd:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(git stash:*)",
+      "Bash(echo \"Exit code: $?\")"
     ]
   },
   "enabledPlugins": {

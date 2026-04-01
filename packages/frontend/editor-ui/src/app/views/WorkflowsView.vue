@@ -219,6 +219,16 @@ const folderActions = computed<
 		disabled: readOnlyEnv.value || !hasPermissionToCreateWorkflows.value,
 	},
 	{
+		label: i18n.baseText('folders.actions.import.fromFile'),
+		value: FOLDER_LIST_ITEM_ACTIONS.IMPORT_FROM_FILE,
+		disabled: readOnlyEnv.value || !hasPermissionToCreateWorkflows.value,
+	},
+	{
+		label: i18n.baseText('folders.actions.import.fromUrl'),
+		value: FOLDER_LIST_ITEM_ACTIONS.IMPORT_FROM_URL,
+		disabled: readOnlyEnv.value || !hasPermissionToCreateWorkflows.value,
+	},
+	{
 		label: i18n.baseText('generic.rename'),
 		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
 		disabled: readOnlyEnv.value || !hasPermissionToUpdateFolders.value,
@@ -1201,6 +1211,28 @@ const onBreadCrumbsAction = async (action: string) => {
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
 			addWorkflow();
 			break;
+		case FOLDER_LIST_ITEM_ACTIONS.IMPORT_FROM_FILE:
+			uiStore.nodeViewInitialized = false;
+			void router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: {
+					projectId: route.params?.projectId,
+					parentFolderId: route.params?.folderId,
+					autoImport: 'file',
+				},
+			});
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.IMPORT_FROM_URL:
+			uiStore.nodeViewInitialized = false;
+			void router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: {
+					projectId: route.params?.projectId,
+					parentFolderId: route.params?.folderId,
+					autoImport: 'url',
+				},
+			});
+			break;
 		case FOLDER_LIST_ITEM_ACTIONS.DELETE:
 			if (!route.params.folderId) return;
 			const content = await getFolderContent(route.params.folderId as string);
@@ -1251,6 +1283,28 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 			void router.push({
 				name: VIEWS.NEW_WORKFLOW,
 				query: { projectId: route.params?.projectId, parentFolderId: clickedFolder.id },
+			});
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.IMPORT_FROM_FILE:
+			uiStore.nodeViewInitialized = false;
+			void router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: {
+					projectId: route.params?.projectId,
+					parentFolderId: clickedFolder.id,
+					autoImport: 'file',
+				},
+			});
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.IMPORT_FROM_URL:
+			uiStore.nodeViewInitialized = false;
+			void router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: {
+					projectId: route.params?.projectId,
+					parentFolderId: clickedFolder.id,
+					autoImport: 'url',
+				},
 			});
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.DELETE: {

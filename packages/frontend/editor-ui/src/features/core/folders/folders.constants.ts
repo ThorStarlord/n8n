@@ -28,6 +28,8 @@ export const FOLDER_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	CREATE: 'create',
 	CREATE_WORKFLOW: 'create_workflow',
+	IMPORT_FROM_FILE: 'import_from_file',
+	IMPORT_FROM_URL: 'import_from_url',
 	RENAME: 'rename',
 	MOVE: 'move',
 	CHOWN: 'change_owner',
