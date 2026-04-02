@@ -21,6 +21,8 @@ import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 
+let projectPagesState: { isOverviewSubPage: boolean; isSharedSubPage: boolean };
+
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
 vi.mock('@/features/integrations/sourceControl.ee/sourceControl.api');
@@ -30,10 +32,7 @@ vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
 	}),
 }));
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
-	useProjectPages: vi.fn().mockReturnValue({
-		isOverviewSubPage: false,
-		isSharedSubPage: false,
-	}),
+	useProjectPages: vi.fn(() => projectPagesState),
 }));
 vi.mock('@/experiments/utils', async (importOriginal) => {
 	const actual = await importOriginal<object>();
@@ -58,7 +57,8 @@ const router = createRouter({
 			component: { template: '<div></div>' },
 		},
 		{
-			path: '/:projectId/folders/:folderId',
+			path: '/:projectId?/folders/:folderId?',
+			name: VIEWS.PROJECTS_FOLDERS,
 			component: { template: '<div></div>' },
 		},
 		{
@@ -103,6 +103,10 @@ describe('WorkflowsView', () => {
 	beforeEach(async () => {
 		await router.push('/');
 		await router.isReady();
+		projectPagesState = {
+			isOverviewSubPage: false,
+			isSharedSubPage: false,
+		};
 		pinia = createTestingPinia({ initialState });
 		foldersStore = mockedStore(useFoldersStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
@@ -430,12 +434,20 @@ describe('Folders', () => {
 	beforeEach(async () => {
 		await router.push('/');
 		await router.isReady();
+		projectPagesState = {
+			isOverviewSubPage: false,
+			isSharedSubPage: false,
+		};
 		pinia = createTestingPinia({ initialState });
 		foldersStore = mockedStore(useFoldersStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
 
 		settingsStore.isFoldersFeatureEnabled = true;
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+		workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
+		foldersStore.totalWorkflowCount = 0;
+		foldersStore.fetchTotalWorkflowsAndFoldersCount.mockResolvedValue(0);
 		projectPages = useProjectPages();
 	});
 
@@ -495,6 +507,86 @@ describe('Folders', () => {
 		expect(getByTestId('resources-list-wrapper').querySelectorAll('.listItem')).toHaveLength(2);
 		expect(getByTestId('workflow-card-name')).toHaveTextContent(TEST_WORKFLOW_RESOURCE.name);
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
+	});
+
+	it('should route folder breadcrumb file import to a new workflow with folder context', async () => {
+		const projectsStore = mockedStore(useProjectsStore);
+		settingsStore.isFoldersFeatureEnabled = true;
+		projectsStore.currentProject = {
+			id: 'project-1',
+			scopes: ['folder:create', 'workflow:create'],
+		} as Project;
+		foldersStore.breadcrumbsCache = {
+			'folder-1': {
+				id: 'folder-1',
+				name: 'Folder 1',
+				parentFolder: 'parent-1',
+			},
+			'parent-1': {
+				id: 'parent-1',
+				name: 'Parent Folder',
+				parentFolder: null,
+			},
+		};
+
+		await router.replace('/project-1/folders/folder-1');
+
+		const { getByTestId } = renderComponent({
+			pinia,
+			global: {
+				stubs: {
+					FolderBreadcrumbs: {
+						template:
+							'<button data-test-id="folder-breadcrumbs-actions" @click="$emit(\'action\', \'import_from_file\')" />',
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('folder-breadcrumbs-actions'));
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
+		expect(router.currentRoute.value.query).toMatchObject({
+			projectId: 'project-1',
+			parentFolderId: 'folder-1',
+			autoImport: 'file',
+		});
+	});
+
+	it('should route folder card URL import to a new workflow with clicked folder context', async () => {
+		const projectsStore = mockedStore(useProjectsStore);
+		settingsStore.isFoldersFeatureEnabled = true;
+		projectsStore.currentProject = {
+			id: 'project-1',
+			scopes: ['folder:create', 'workflow:create'],
+		} as Project;
+		foldersStore.totalWorkflowCount = 1;
+		foldersStore.getCachedFolder.mockReturnValue({
+			id: '2',
+			name: 'Folder 2',
+			parentFolder: null,
+		});
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_FOLDER_RESOURCE]);
+		await router.replace('/project-1');
+
+		const { getByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		const actionButton = getByTestId('folder-card-actions').querySelector('[role=button]');
+		if (!actionButton) {
+			throw new Error('Folder action button not found');
+		}
+
+		await userEvent.click(actionButton);
+		await userEvent.click(getByTestId('action-import_from_url'));
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
+		expect(router.currentRoute.value.query).toMatchObject({
+			projectId: 'project-1',
+			parentFolderId: '2',
+			autoImport: 'url',
+		});
 	});
 
 	it('should show "Create folder" button when not in the overview or sharing pages', async () => {

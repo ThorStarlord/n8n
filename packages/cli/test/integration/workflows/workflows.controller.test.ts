@@ -681,11 +681,10 @@ describe('POST /workflows', () => {
 		expect(response.body.data.shared).toBeUndefined();
 	});
 
-	test('create workflow without parent is provided folder does not exist in the project', async () => {
+	test('should return 404 when creating a workflow with an invalid parent folder', async () => {
 		//
 		// ARRANGE
 		//
-		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const workflow = makeWorkflow();
 
 		//
@@ -694,27 +693,12 @@ describe('POST /workflows', () => {
 		const response = await authOwnerAgent
 			.post('/workflows')
 			.send({ ...workflow, parentFolderId: 'non-existing-folder-id' })
-			.expect(200);
+			.expect(404);
 
 		//
 		// ASSERT
 		//
-
-		expect(response.body.data).toMatchObject({
-			active: false,
-			activeVersionId: null,
-			id: expect.any(String),
-			name: workflow.name,
-			sharedWithProjects: [],
-			usedCredentials: [],
-			homeProject: {
-				id: personalProject.id,
-				name: personalProject.name,
-				type: personalProject.type,
-			},
-			parentFolder: null,
-		});
-		expect(response.body.data.shared).toBeUndefined();
+		expect(response.body.message).toBe('Could not find the folder: non-existing-folder-id');
 	});
 
 	describe('Security: Mass Assignment Protection', () => {
@@ -3246,7 +3230,8 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
-		expect(response.statusCode).toBe(500);
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe(`Could not find the folder: ${folder2.id}`);
 	});
 
 	test('should not activate when updating with active: true', async () => {

@@ -7,6 +7,7 @@ import type { Cipher } from 'n8n-core';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import type { FolderService } from '@/services/folder.service';
 
 import { ImportService } from '../import.service';
 
@@ -40,6 +41,7 @@ describe('ImportService', () => {
 	let mockCipher: Cipher;
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
+	let mockFolderService: FolderService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -52,6 +54,7 @@ describe('ImportService', () => {
 		mockCipher = mock<Cipher>();
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
+		mockFolderService = mock<FolderService>();
 
 		// Set up cipher mock
 		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
@@ -82,9 +85,17 @@ describe('ImportService', () => {
 			from: jest.fn().mockReturnThis(),
 			execute: jest.fn().mockResolvedValue(undefined),
 		});
+		mockEntityManager.find = jest.fn().mockResolvedValue([]);
+		mockEntityManager.findOneByOrFail = jest.fn().mockResolvedValue({ id: 'project-1' });
 		mockEntityManager.query = jest.fn().mockResolvedValue(undefined);
 		mockEntityManager.insert = jest.fn().mockResolvedValue(undefined);
-		mockEntityManager.upsert = jest.fn().mockResolvedValue(undefined);
+		mockEntityManager.upsert = jest.fn().mockResolvedValue({ identifiers: [{ id: 'workflow-1' }] });
+		mockEntityManager.transaction = jest.fn().mockImplementation(async (callback) => {
+			return await callback(mockEntityManager);
+		});
+		mockCredentialsRepository.find = jest.fn().mockResolvedValue([]);
+		mockTagRepository.find = jest.fn().mockResolvedValue([]);
+		Object.assign(mockCredentialsRepository, { manager: mockEntityManager });
 
 		// Mock transaction method
 		mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
@@ -99,8 +110,67 @@ describe('ImportService', () => {
 			mockCipher,
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
-			mock(),
+			mockFolderService,
 		);
+	});
+
+	describe('importWorkflows folder handling', () => {
+		it('should fail fast when override folder cannot be resolved', async () => {
+			mockFolderService.findFolderInProjectOrFail = jest
+				.fn()
+				.mockRejectedValue(new Error('Folder missing'));
+
+			await expect(
+				importService.importWorkflows(
+					[
+						{
+							id: 'workflow-1',
+							name: 'Test Workflow',
+							nodes: [],
+							connections: {},
+						} as never,
+					],
+					'project-1',
+					'override-folder-id',
+				),
+			).rejects.toThrow('Folder missing');
+
+			expect(mockLogger.warn).not.toHaveBeenCalled();
+		});
+
+		it('should warn and fall back to project root when embedded folder cannot be resolved', async () => {
+			mockFolderService.findFolderInProjectOrFail = jest
+				.fn()
+				.mockRejectedValue(new Error('Folder missing'));
+
+			await importService.importWorkflows(
+				[
+					{
+						id: 'workflow-1',
+						name: 'Test Workflow',
+						nodes: [],
+						connections: {},
+						parentFolderId: 'missing-folder-id',
+					} as never,
+				],
+				'project-1',
+			);
+
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Falling back to project root because imported workflow parentFolderId could not be resolved',
+				expect.objectContaining({
+					workflowId: 'workflow-1',
+					workflowName: 'Test Workflow',
+					requestedFolderId: 'missing-folder-id',
+					projectId: 'project-1',
+				}),
+			);
+
+			const importedWorkflow = mockEntityManager.upsert.mock.calls[0]?.[1] as {
+				parentFolder: unknown;
+			};
+			expect(importedWorkflow.parentFolder).toBeNull();
+		});
 	});
 
 	describe('isTableEmpty', () => {

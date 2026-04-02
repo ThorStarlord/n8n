@@ -50,6 +50,7 @@ import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { IWorkflowResponse } from '@/interfaces';
@@ -100,13 +101,21 @@ export class WorkflowsController {
 		// triggerCount, versionCounter, isArchived, etc. are never set from user input
 		Object.assign(newWorkflow, body);
 
-		const savedWorkflow = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
-			tagIds: body.tags,
-			parentFolderId: body.parentFolderId,
-			projectId: body.projectId,
-			autosaved: body.autosaved,
-			uiContext: body.uiContext,
-		});
+		let savedWorkflow: WorkflowEntity;
+		try {
+			savedWorkflow = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
+				tagIds: body.tags,
+				parentFolderId: body.parentFolderId,
+				projectId: body.projectId,
+				autosaved: body.autosaved,
+				uiContext: body.uiContext,
+			});
+		} catch (error) {
+			if (error instanceof FolderNotFoundError) {
+				throw new NotFoundError(error.message);
+			}
+			throw error;
+		}
 
 		const savedWorkflowWithMetaData =
 			this.enterpriseWorkflowService.addOwnerAndSharings(savedWorkflow);
@@ -328,14 +337,22 @@ export class WorkflowsController {
 			);
 		}
 
-		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
-			tagIds: tags,
-			parentFolderId,
-			forceSave: isSharingEnabled ? forceSave : true,
-			expectedChecksum,
-			aiBuilderAssisted,
-			autosaved,
-		});
+		let updatedWorkflow: WorkflowEntity;
+		try {
+			updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
+				tagIds: tags,
+				parentFolderId,
+				forceSave: isSharingEnabled ? forceSave : true,
+				expectedChecksum,
+				aiBuilderAssisted,
+				autosaved,
+			});
+		} catch (error) {
+			if (error instanceof FolderNotFoundError) {
+				throw new NotFoundError(error.message);
+			}
+			throw error;
+		}
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(updatedWorkflow);

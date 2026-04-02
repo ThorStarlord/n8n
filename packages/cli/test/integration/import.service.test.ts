@@ -26,14 +26,17 @@ import { v4 as uuid } from 'uuid';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { ImportService } from '@/services/import.service';
+import { FolderService } from '@/services/folder.service';
 
 import { createMember, createOwner } from './shared/db/users';
+import { createFolder } from './shared/db/folders';
 
 describe('ImportService', () => {
 	let importService: ImportService;
 	let tagRepository: TagRepository;
 	let owner: User;
 	let ownerPersonalProject: Project;
+	let mockLogger: ReturnType<typeof mock>;
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
 
@@ -56,24 +59,27 @@ describe('ImportService', () => {
 		tagRepository = Container.get(TagRepository);
 
 		const credentialsRepository = Container.get(CredentialsRepository);
+		const folderService = Container.get(FolderService);
 
+		mockLogger = mock();
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 
 		importService = new ImportService(
-			mock(),
+			mockLogger,
 			credentialsRepository,
 			tagRepository,
 			mock(),
 			mock(),
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
-			mock(),
+			folderService,
 		);
 	});
 
 	afterEach(async () => {
+		jest.clearAllMocks();
 		await testDb.truncate([
 			'WorkflowEntity',
 			'SharedWorkflow',
@@ -115,6 +121,66 @@ describe('ImportService', () => {
 		});
 
 		expect(dbSharing.projectId).toBe(ownerPersonalProject.id);
+	});
+
+	test('should assign imported workflow to embedded parentFolderId when folder exists in target project', async () => {
+		const folder = await createFolder(ownerPersonalProject, { name: 'Import Target' });
+		const workflowToImport = newWorkflow();
+		(workflowToImport as { parentFolderId?: string }).parentFolderId = folder.id;
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const dbWorkflow = await workflowRepository.findOneOrFail({
+			where: { id: workflowToImport.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(dbWorkflow.parentFolder?.id).toBe(folder.id);
+	});
+
+	test('should prefer override folder over embedded parentFolderId during import', async () => {
+		const embeddedFolder = await createFolder(ownerPersonalProject, { name: 'Embedded Folder' });
+		const overrideFolder = await createFolder(ownerPersonalProject, { name: 'Override Folder' });
+		const workflowToImport = newWorkflow();
+		(workflowToImport as { parentFolderId?: string }).parentFolderId = embeddedFolder.id;
+
+		await importService.importWorkflows(
+			[workflowToImport],
+			ownerPersonalProject.id,
+			overrideFolder.id,
+		);
+
+		const dbWorkflow = await workflowRepository.findOneOrFail({
+			where: { id: workflowToImport.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(dbWorkflow.parentFolder?.id).toBe(overrideFolder.id);
+	});
+
+	test('should fall back to project root when embedded parentFolderId is not in target project', async () => {
+		const member = await createMember();
+		const memberPersonalProject = await getPersonalProject(member);
+		const foreignFolder = await createFolder(memberPersonalProject, { name: 'Foreign Folder' });
+		const workflowToImport = newWorkflow();
+		(workflowToImport as { parentFolderId?: string }).parentFolderId = foreignFolder.id;
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const dbWorkflow = await workflowRepository.findOneOrFail({
+			where: { id: workflowToImport.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(dbWorkflow.parentFolder).toBeNull();
+		expect(mockLogger.warn).toHaveBeenCalledWith(
+			'Falling back to project root because imported workflow parentFolderId could not be resolved',
+			expect.objectContaining({
+				workflowName: workflowToImport.name,
+				requestedFolderId: foreignFolder.id,
+				projectId: ownerPersonalProject.id,
+			}),
+		);
 	});
 
 	test('should not change the owner if it already exists', async () => {

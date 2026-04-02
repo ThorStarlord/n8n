@@ -19,6 +19,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
 
 function setDocumentStoreActive(workflowId: string) {
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).setActiveState({
@@ -462,6 +463,55 @@ describe('useWorkflowSaving', () => {
 	});
 
 	describe('saveCurrentWorkflow', () => {
+		it('should use parentFolderId from the route when first-saving a new workflow', async () => {
+			const mockRouter = {
+				currentRoute: {
+					value: {
+						params: { name: 'new' },
+						query: { parentFolderId: 'folder-123' },
+					},
+				},
+				push: vi.fn().mockResolvedValue(undefined),
+			};
+			const useWorkflowHelpersSpy = vi
+				.spyOn(workflowHelpersModule, 'useWorkflowHelpers')
+				.mockReturnValue({
+					getWorkflowDataToSave: vi.fn().mockResolvedValue({
+						name: 'Imported workflow',
+						nodes: [],
+						connections: {},
+						settings: {},
+					}),
+					checkConflictingWebhooks: vi.fn().mockResolvedValue(false),
+					getWorkflowProjectRole: vi.fn().mockReturnValue('workflow:owner'),
+				});
+
+			workflowsStore.workflowId = 'new';
+			vi.spyOn(workflowsStore, 'createNewWorkflow').mockResolvedValue(
+				createTestWorkflow({
+					id: 'saved-workflow',
+					versionId: 'version-1',
+					activeVersionId: null,
+					nodes: [],
+					connections: {},
+				}),
+			);
+
+			try {
+				const { saveCurrentWorkflow } = useWorkflowSaving({ router: mockRouter as never });
+				await saveCurrentWorkflow();
+
+				expect(workflowsStore.createNewWorkflow).toHaveBeenCalledWith(
+					expect.objectContaining({
+						name: 'Imported workflow',
+						parentFolderId: 'folder-123',
+					}),
+				);
+			} finally {
+				useWorkflowHelpersSpy.mockRestore();
+			}
+		});
+
 		it('should save the current workflow', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w0',

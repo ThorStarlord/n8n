@@ -139,15 +139,32 @@ export class ImportService {
 					.parentFolderId;
 				const targetFolderId = parentFolderIdOverride ?? rawFolderId ?? null;
 				if (targetFolderId) {
-					try {
+					if (parentFolderIdOverride) {
 						workflow.parentFolder = await this.folderService.findFolderInProjectOrFail(
 							targetFolderId,
 							personalProject.id,
 							tx,
 						);
-					} catch {
-						// Folder doesn't exist in this project — fall back to project root
-						workflow.parentFolder = null;
+					} else {
+						try {
+							workflow.parentFolder = await this.folderService.findFolderInProjectOrFail(
+								targetFolderId,
+								personalProject.id,
+								tx,
+							);
+						} catch {
+							this.logger.warn(
+								'Falling back to project root because imported workflow parentFolderId could not be resolved',
+								{
+									workflowId: workflow.id,
+									workflowName: workflow.name,
+									requestedFolderId: targetFolderId,
+									projectId: personalProject.id,
+								},
+							);
+							// Folder doesn't exist in this project — fall back to project root
+							workflow.parentFolder = null;
+						}
 					}
 				} else {
 					workflow.parentFolder = null;

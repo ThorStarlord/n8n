@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures/base';
 import onboardingWorkflow from '../../../../workflows/Onboarding_workflow.json';
+import { resolveFromRoot } from '../../../../utils/path-helper';
 
 test.describe(
 	'Import workflow',
@@ -100,6 +101,41 @@ test.describe(
 				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
 
 				await expect(n8n.canvas.nodeConnections()).toHaveCount(5);
+			});
+
+			test('should save an imported workflow into the folder it was imported from', async ({
+				n8n,
+			}) => {
+				const project = await n8n.api.projects.createProject('Import Target Project');
+				const folder = await n8n.api.projects.createFolder(project.id, 'Imported Workflows');
+				const workflowName = `Imported Workflow ${Date.now()}`;
+
+				await n8n.navigate.toFolder(folder.id, project.id);
+				await expect(n8n.workflows.getFolderBreadcrumbsActions()).toBeVisible();
+
+				await n8n.workflows.getFolderBreadcrumbsActionToggle().click();
+				const [fileChooser] = await Promise.all([
+					n8n.page.waitForEvent('filechooser'),
+					n8n.workflows.getFolderBreadcrumbsAction('import_from_file').click(),
+				]);
+
+				await fileChooser.setFiles(
+					resolveFromRoot('workflows', 'Test_workflow-actions_paste-data.json'),
+				);
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
+
+				const createResponsePromise = n8n.page.waitForResponse(
+					(response) =>
+						response.url().includes('/rest/workflows') && response.request().method() === 'POST',
+				);
+
+				await n8n.page.getByTestId('inline-edit-preview').click();
+				await n8n.page.getByTestId('inline-edit-input').fill(workflowName);
+				await n8n.page.getByTestId('inline-edit-input').press('Enter');
+				await createResponsePromise;
+
+				await n8n.navigate.toFolder(folder.id, project.id);
+				await expect(n8n.workflows.cards.getWorkflow(workflowName)).toBeVisible();
 			});
 		});
 	},
