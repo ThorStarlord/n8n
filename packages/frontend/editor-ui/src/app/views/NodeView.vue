@@ -836,7 +836,7 @@ async function onImportWorkflowUrlEvent(data: { url: string; parentFolderId?: st
 		viewport: viewportBoundaries.value,
 	});
 
-	if (data.parentFolderId && !editableWorkflow.value.id) {
+	if (!editableWorkflow.value.id) {
 		void router.replace({ query: { ...route.query, parentFolderId: data.parentFolderId } });
 	}
 

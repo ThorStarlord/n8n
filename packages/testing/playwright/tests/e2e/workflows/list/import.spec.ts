@@ -82,6 +82,38 @@ test.describe(
 				await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
 				await expect(n8n.notifications.getSuccessNotifications()).toHaveCount(0);
 			});
+
+			test('should save a URL-imported workflow into the folder it was imported from', async ({
+				n8n,
+			}) => {
+				const project = await n8n.api.projects.createProject('URL Import Target Project');
+				const folder = await n8n.api.projects.createFolder(project.id, 'URL Imported Workflows');
+				const workflowName = `URL Imported Workflow ${Date.now()}`;
+
+				await n8n.navigate.toFolder(folder.id, project.id);
+				await expect(n8n.workflows.getFolderBreadcrumbsActions()).toBeVisible();
+
+				await n8n.workflows.getFolderBreadcrumbsActionToggle().click();
+				await n8n.workflows.getFolderBreadcrumbsAction('import_from_url').click();
+
+				await expect(n8n.canvas.getImportURLInput()).toBeVisible();
+				await n8n.canvas.fillImportURLInput('https://fakepage.com/workflow.json');
+				await n8n.canvas.clickConfirmImportURL();
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
+
+				const createResponsePromise = n8n.page.waitForResponse(
+					(response) =>
+						response.url().includes('/rest/workflows') && response.request().method() === 'POST',
+				);
+
+				await n8n.page.getByTestId('inline-edit-preview').click();
+				await n8n.page.getByTestId('inline-edit-input').fill(workflowName);
+				await n8n.page.getByTestId('inline-edit-input').press('Enter');
+				await createResponsePromise;
+
+				await n8n.navigate.toFolder(folder.id, project.id);
+				await expect(n8n.workflows.cards.getWorkflow(workflowName)).toBeVisible();
+			});
 		});
 
 		test.describe('From File', () => {

@@ -525,7 +525,7 @@ describe('Folders', () => {
 			'parent-1': {
 				id: 'parent-1',
 				name: 'Parent Folder',
-				parentFolder: null,
+				parentFolder: undefined,
 			},
 		};
 
@@ -565,7 +565,7 @@ describe('Folders', () => {
 		foldersStore.getCachedFolder.mockReturnValue({
 			id: '2',
 			name: 'Folder 2',
-			parentFolder: null,
+			parentFolder: undefined,
 		});
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_FOLDER_RESOURCE]);
 		await router.replace('/project-1');

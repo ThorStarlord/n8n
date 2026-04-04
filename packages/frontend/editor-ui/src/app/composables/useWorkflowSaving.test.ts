@@ -484,7 +484,7 @@ describe('useWorkflowSaving', () => {
 					}),
 					checkConflictingWebhooks: vi.fn().mockResolvedValue(false),
 					getWorkflowProjectRole: vi.fn().mockReturnValue('workflow:owner'),
-				});
+				} as unknown as ReturnType<typeof workflowHelpersModule.useWorkflowHelpers>);
 
 			workflowsStore.workflowId = 'new';
 			vi.spyOn(workflowsStore, 'createNewWorkflow').mockResolvedValue(

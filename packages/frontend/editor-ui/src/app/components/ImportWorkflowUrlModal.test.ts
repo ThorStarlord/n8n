@@ -1,13 +1,21 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { waitAllPromises } from '@/__tests__/utils';
 import ImportWorkflowUrlModal from './ImportWorkflowUrlModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useUIStore } from '@/app/stores/ui.store';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { IMPORT_WORKFLOW_URL_MODAL_KEY } from '@/app/constants';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import userEvent from '@testing-library/user-event';
 import { useRoute } from 'vue-router';
 import type { Mock } from 'vitest';
+
+const mockFetchParentFolder = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/core/folders/composables/useParentFolder', () => ({
+	useParentFolder: () => ({
+		fetchParentFolder: mockFetchParentFolder,
+	}),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -43,8 +51,20 @@ const global = {
 	stubs: {
 		Modal: ModalStub,
 		MoveToFolderDropdown: {
-			template:
-				"<button data-test-id=\"folder-select\" @click=\"$emit('location:selected', { id: 'folder-123', name: 'Folder 123' })\" />",
+			props: ['selectedLocation'],
+			template: `
+				<div>
+					<div data-test-id="selected-location-id">{{ selectedLocation?.id }}</div>
+					<button
+						data-test-id="folder-select"
+						@click="$emit('location:selected', { id: 'folder-123', name: 'Folder 123', resource: 'folder', createdAt: '', updatedAt: '', workflowCount: 0, subFolderCount: 0, path: [] })"
+					/>
+					<button
+						data-test-id="project-root-select"
+						@click="$emit('location:selected', { id: 'project-123', name: 'Project Root', resource: 'project', createdAt: '', updatedAt: '', workflowCount: 0, subFolderCount: 0, path: [] })"
+					/>
+				</div>
+			`,
 		},
 	},
 };
@@ -59,6 +79,7 @@ describe('ImportWorkflowUrlModal', () => {
 			query: {},
 			path: '/',
 		});
+		mockFetchParentFolder.mockResolvedValue(null);
 		pinia = createTestingPinia({ initialState });
 	});
 
@@ -96,8 +117,11 @@ describe('ImportWorkflowUrlModal', () => {
 	});
 
 	it('should emit selected folder id on confirm when a folder is chosen', async () => {
-		const projectsStore = useProjectsStore();
-		projectsStore.currentProjectId = 'project-123';
+		(useRoute as Mock).mockReturnValue({
+			params: {},
+			query: { projectId: 'project-123' },
+			path: '/',
+		});
 
 		const { getByTestId } = renderModal({
 			global,
@@ -117,6 +141,53 @@ describe('ImportWorkflowUrlModal', () => {
 			url: 'https://valid-url.com/workflow',
 			parentFolderId: 'folder-123',
 		});
+	});
+
+	it('should omit parentFolderId when project root is selected', async () => {
+		(useRoute as Mock).mockReturnValue({
+			params: {},
+			query: { projectId: 'project-123' },
+			path: '/',
+		});
+
+		const { getByTestId } = renderModal({
+			global,
+			pinia,
+		});
+
+		const emitSpy = vi.spyOn(nodeViewEventBus, 'emit');
+
+		await userEvent.type(
+			getByTestId('workflow-url-import-input'),
+			'https://valid-url.com/workflow',
+		);
+		await userEvent.click(getByTestId('project-root-select'));
+		await userEvent.click(getByTestId('confirm-workflow-import-url-button'));
+
+		expect(emitSpy).toHaveBeenCalledWith('importWorkflowUrl', {
+			url: 'https://valid-url.com/workflow',
+		});
+	});
+
+	it('should initialize the selected folder from the route context', async () => {
+		(useRoute as Mock).mockReturnValue({
+			params: {},
+			query: { projectId: 'project-123', parentFolderId: 'folder-456' },
+			path: '/workflow/new',
+		});
+		mockFetchParentFolder.mockResolvedValue({
+			id: 'folder-456',
+			name: 'Folder 456',
+			parentFolderId: null,
+		});
+
+		const { getByTestId } = renderModal({
+			global,
+			pinia,
+		});
+		await waitAllPromises();
+
+		expect(getByTestId('selected-location-id')).toHaveTextContent('folder-456');
 	});
 
 	it('should disable confirm button for invalid URL', async () => {

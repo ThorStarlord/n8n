@@ -279,6 +279,14 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		);
 
 		const parentFolder = await fetchParentFolder(parentFolderId);
+		if (parentFolderId && !parentFolder) {
+			await router.replace({
+				query: {
+					...route.query,
+					parentFolderId: undefined,
+				},
+			});
+		}
 		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
 
 		uiStore.nodeViewInitialized = true;

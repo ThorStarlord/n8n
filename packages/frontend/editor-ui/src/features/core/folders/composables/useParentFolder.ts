@@ -13,8 +13,12 @@ export function useParentFolder() {
 
 		let folder = foldersStore.getCachedFolder(folderId);
 		if (!folder && projectsStore.currentProjectId) {
-			await foldersStore.getFolderPath(projectsStore.currentProjectId, folderId);
-			folder = foldersStore.getCachedFolder(folderId);
+			try {
+				await foldersStore.getFolderPath(projectsStore.currentProjectId, folderId);
+				folder = foldersStore.getCachedFolder(folderId);
+			} catch {
+				return null;
+			}
 		}
 
 		if (!folder) return null;
