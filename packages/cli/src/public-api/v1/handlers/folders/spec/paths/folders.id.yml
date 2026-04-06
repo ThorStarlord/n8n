@@ -24,6 +24,8 @@ get:
         application/json:
           schema:
             $ref: '../schemas/folder.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
 
@@ -33,7 +35,7 @@ patch:
   tags:
     - Folders
   summary: Update a folder
-  description: Update a folder's name or its parent folder ID.
+  description: Update a folder's name or its parent folder ID. Set parentFolderId to null to move it to the root of the project.
   parameters:
     - name: id
       in: path
