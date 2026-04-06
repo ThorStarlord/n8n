@@ -70,6 +70,8 @@ paths:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
   /folders:
     $ref: './handlers/folders/spec/paths/folders.yml'
+  /folders/import:
+    $ref: './handlers/folders/spec/paths/folders.import.yml'
   /folders/{id}:
     $ref: './handlers/folders/spec/paths/folders.id.yml'
   /workflows:

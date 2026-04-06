@@ -84,5 +84,10 @@ properties:
     nullable: true
     description: ID of the folder to place the workflow in. Omit to create at project root. Pass 'root' to move an existing workflow to the root directory.
     example: VmwOO9HeTEj20kxM
+  parentFolderPath:
+    type: string
+    nullable: true
+    description: Slash-delimited path to the folder. Missing intermediate folders are created automatically. Takes precedence over parentFolderId.
+    example: /Finance/2026/Q1
   activeVersion:
     $ref: './activeVersion.yml'

@@ -21,6 +21,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
+import * as foldersService from '../folders/folders.service';
 import type { WorkflowRequest } from '../../../types';
 import {
 	apiKeyHasScope,
@@ -33,7 +34,8 @@ export = {
 	createWorkflow: [
 		apiKeyHasScope('workflow:create'),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
-			const { parentFolderId, ...workflowData } = req.body;
+			const { parentFolderId: initialParentFolderId, parentFolderPath, ...workflowData } = req.body;
+			let parentFolderId = initialParentFolderId;
 
 			workflowData.active = false;
 			workflowData.versionId = uuid();
@@ -41,6 +43,15 @@ export = {
 			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 				req.user.id,
 			);
+
+			if (parentFolderPath) {
+				const foldersService = await import('../folders/folders.service');
+				parentFolderId = await foldersService.resolveFolderPath(
+					req.user.id,
+					parentFolderPath,
+					project.id,
+				);
+			}
 
 			await replaceInvalidCredentials(workflowData as WorkflowEntity, project.id);
 
@@ -366,7 +377,21 @@ export = {
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
-			const { parentFolderId, ...updateBody } = req.body;
+			const { parentFolderId: initialParentFolderId, parentFolderPath, ...updateBody } = req.body;
+			let parentFolderId = initialParentFolderId;
+
+			if (parentFolderPath) {
+				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+					req.user.id,
+				);
+				const foldersService = await import('../folders/folders.service');
+				parentFolderId = await foldersService.resolveFolderPath(
+					req.user.id,
+					parentFolderPath,
+					project.id,
+				);
+			}
+
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, updateBody);
 

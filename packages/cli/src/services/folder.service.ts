@@ -36,9 +36,26 @@ export class FolderService {
 		private readonly workflowService: WorkflowService,
 	) {}
 
-	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string) {
+	private static readonly MAX_FOLDER_DEPTH = 10;
+
+	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string, upsert = false) {
+		if (upsert) {
+			const existing = await this.folderRepository.findOne({
+				where: {
+					name,
+					homeProject: { id: projectId },
+					parentFolder:
+						!parentFolderId || parentFolderId === PROJECT_ROOT ? IsNull() : { id: parentFolderId },
+				},
+			});
+			if (existing) {
+				return existing;
+			}
+		}
+
 		let parentFolder = null;
-		if (parentFolderId) {
+		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
+			await this.checkFolderDepth(parentFolderId, projectId);
 			parentFolder = await this.findFolderInProjectOrFail(parentFolderId, projectId);
 		}
 
@@ -66,12 +83,13 @@ export class FolderService {
 			await this.folderTagMappingRepository.overwriteTags(folderId, tagIds);
 		}
 
-		if (parentFolderId) {
+		if (parentFolderId !== undefined) {
 			if (folderId === parentFolderId) {
 				throw new UserError('Cannot set a folder as its own parent');
 			}
 
-			if (parentFolderId !== PROJECT_ROOT) {
+			if (parentFolderId !== null && parentFolderId !== PROJECT_ROOT) {
+				await this.checkFolderDepth(parentFolderId, projectId);
 				await this.findFolderInProjectOrFail(parentFolderId, projectId);
 
 				// Ensure that the target parentFolder isn't a descendant of the current folder.
@@ -85,7 +103,12 @@ export class FolderService {
 
 			await this.folderRepository.update(
 				{ id: folderId },
-				{ parentFolder: parentFolderId !== PROJECT_ROOT ? { id: parentFolderId } : null },
+				{
+					parentFolder:
+						parentFolderId === null || parentFolderId === PROJECT_ROOT
+							? null
+							: { id: parentFolderId },
+				},
 			);
 		}
 	}
@@ -95,6 +118,37 @@ export class FolderService {
 			return await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId, em);
 		} catch {
 			throw new FolderNotFoundError(folderId);
+		}
+	}
+
+	private async checkFolderDepth(parentFolderId: string, _projectId: string) {
+		const baseQuery = this.folderRepository
+			.createQueryBuilder('folder')
+			.select('folder.id', 'id')
+			.addSelect('folder.parentFolderId', 'parentFolderId')
+			.where('folder.id = :parentFolderId', { parentFolderId });
+
+		const recursiveQuery = this.folderRepository
+			.createQueryBuilder('f')
+			.select('f.id', 'id')
+			.addSelect('f.parentFolderId', 'parentFolderId')
+			.innerJoin('folder_path', 'fp', 'f.id = fp.parentFolderId');
+
+		const depthQuery = this.folderRepository
+			.createQueryBuilder()
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_path',
+				{ recursive: true },
+			)
+			.select('COUNT(*)', 'depth')
+			.from('folder_path', 'fp');
+
+		const result = await depthQuery.getRawOne<{ depth: string }>();
+		const depth = parseInt(result?.depth ?? '0', 10);
+
+		if (depth >= FolderService.MAX_FOLDER_DEPTH) {
+			throw new UserError(`Folder depth limit reached (max ${FolderService.MAX_FOLDER_DEPTH})`);
 		}
 	}
 

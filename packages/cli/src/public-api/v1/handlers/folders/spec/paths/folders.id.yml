@@ -11,6 +11,12 @@ get:
       required: true
       schema:
         type: string
+    - name: projectId
+      in: query
+      description: The ID of the project the folder belongs to.
+      required: false
+      schema:
+        type: string
   responses:
     '200':
       description: A folder object
@@ -32,6 +38,12 @@ patch:
     - name: id
       in: path
       required: true
+      schema:
+        type: string
+    - name: projectId
+      in: query
+      description: The ID of the project the folder belongs to.
+      required: false
       schema:
         type: string
   requestBody:
@@ -71,6 +83,12 @@ delete:
       schema:
         type: boolean
         example: true
+    - name: projectId
+      in: query
+      description: The ID of the project the folder belongs to.
+      required: false
+      schema:
+        type: string
   responses:
     '204':
       description: Folder deleted successfully

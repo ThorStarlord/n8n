@@ -11,6 +11,11 @@ properties:
     type: string
     nullable: true
     example: 0rtUt1wbLX592XDd
+    description: Unique identifier of the parent folder. Set to null to move to the root.
+  projectId:
+    type: string
+    example: 12345
+    description: Unique identifier of the project the folder belongs to.
   createdAt:
     type: string
     format: date-time

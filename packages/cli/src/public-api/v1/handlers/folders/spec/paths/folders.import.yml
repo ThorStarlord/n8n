@@ -1,0 +1,46 @@
+post:
+  x-eov-operation-id: importFolder
+  x-eov-operation-handler: v1/handlers/folders/folders.handler
+  tags:
+    - Folders
+  summary: Import a folder hierarchy
+  description: Import a folder tree including nested folders and workflows.
+  parameters:
+    - name: projectId
+      in: query
+      description: The ID of the project to import into.
+      required: false
+      schema:
+        type: string
+  requestBody:
+    description: Folder tree to import.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Finance
+            workflows:
+              type: array
+              items:
+                $ref: '../../workflows/spec/schemas/workflow.yml'
+            children:
+              type: array
+              items:
+                $ref: '#/post/requestBody/content/application/json/schema'
+          required:
+            - name
+    required: true
+  responses:
+    '201':
+      description: Import successful. Returns the created root folder.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/folder.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

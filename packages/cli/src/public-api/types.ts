@@ -100,13 +100,18 @@ export declare namespace WorkflowRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity & { parentFolderId?: string }, {}>;
+	type Create = AuthenticatedRequest<
+		{},
+		{},
+		WorkflowEntity & { parentFolderId?: string; parentFolderPath?: string },
+		{}
+	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<
 		{ id: string },
 		{},
-		WorkflowEntity & { parentFolderId?: string },
+		WorkflowEntity & { parentFolderId?: string; parentFolderPath?: string },
 		{}
 	>;
 	type Activate = AuthenticatedRequest<
@@ -298,16 +303,41 @@ export declare namespace FolderRequest {
 			limit?: number;
 			cursor?: string;
 			offset?: number;
+			projectId?: string;
+			name?: string;
+			tags?: string;
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, { name: string; parentFolderId?: string }, {}>;
-	type Get = AuthenticatedRequest<{ id: string }>;
-	type Delete = Get;
+	type Create = AuthenticatedRequest<
+		{},
+		{},
+		{ name: string; parentFolderId?: string; projectId?: string },
+		{ upsert?: string }
+	>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { projectId?: string }>;
+	type Delete = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{},
+		{ forceDelete?: string; projectId?: string }
+	>;
 	type Update = AuthenticatedRequest<
 		{ id: string },
 		{},
-		{ name?: string; parentFolderId?: string }
+		{ name?: string; parentFolderId?: string; projectId?: string },
+		{}
+	>;
+	type Import = AuthenticatedRequest<
+		{},
+		{},
+		{
+			name: string;
+			workflows?: any[];
+			children?: any[];
+			projectId?: string;
+			parentId?: string;
+		}
 	>;
 }
 

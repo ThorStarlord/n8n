@@ -8,6 +8,24 @@ get:
   parameters:
     - $ref: '../../../../shared/spec/parameters/limit.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
+    - name: projectId
+      in: query
+      description: The ID of the project to filter folders by.
+      required: false
+      schema:
+        type: string
+    - name: name
+      in: query
+      description: Filter by folder name (case-insensitive partial match).
+      required: false
+      schema:
+        type: string
+    - name: tags
+      in: query
+      description: Filter by tags (comma-separated list of tag names).
+      required: false
+      schema:
+        type: string
   responses:
     '200':
       description: Operation successful.
@@ -33,6 +51,14 @@ post:
     - Folders
   summary: Create a folder
   description: Create a folder in your instance.
+  parameters:
+    - name: upsert
+      in: query
+      description: If true, returns an existing folder if one with the same name and parent already exists in the project.
+      required: false
+      schema:
+        type: boolean
+        default: false
   requestBody:
     description: Created folder object.
     content:
