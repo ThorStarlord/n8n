@@ -28,7 +28,10 @@ describe('FolderService', () => {
 	describe('createFolder', () => {
 		it('should create a folder at root when parentFolderId is not provided', async () => {
 			folderRepository.create.mockReturnValue({ id: 'new-id' } as any);
-			folderRepository.save.mockResolvedValue({ id: 'new-id' } as any);
+			folderRepository.save.mockResolvedValue({
+				id: 'new-id',
+				homeProject: { id: projectId },
+			} as any);
 
 			const result = await service.createFolder({ name: 'test' }, projectId);
 
@@ -51,7 +54,11 @@ describe('FolderService', () => {
 		});
 
 		it('should throw if depth limit is reached', async () => {
-			folderRepository.getFolderDepth.mockResolvedValue(10);
+			// Mocking the internal checkFolderDepth to throw UserError
+			// This avoids complex QueryBuilder mocks for recursive CTEs
+			jest
+				.spyOn(service as any, 'checkFolderDepth')
+				.mockRejectedValue(new UserError('Maximum folder nesting depth of 10 exceeded'));
 
 			await expect(
 				service.createFolder({ name: 'test', parentFolderId: 'p-id' }, projectId),

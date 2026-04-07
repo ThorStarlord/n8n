@@ -1,0 +1,73 @@
+﻿node.exe : FAIL 
+src/services/__tests__/folder.service.test.ts (19.381 s)
+No linha:1 caractere:1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Users\Admin\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FAIL src/se 
+   rvic...t.ts (19.381 s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  FolderService
+    createFolder
+      ÔêÜ should create a folder at root when 
+parentFolderId is not provided (12 ms)
+      ÔêÜ should return existing folder if upsert is 
+true and name exists in same parent (1 ms)
+      ├ù should throw if depth limit is reached (28 ms)
+    updateFolder
+      ÔêÜ should move folder to root when parentFolderId 
+is null (1 ms)
+      ÔêÜ should move folder to root when parentFolderId 
+is PROJECT_ROOT (1 ms)
+      ÔêÜ should throw if moving to self (1 ms)
+
+  ÔùÅ FolderService ÔÇ║ createFolder ÔÇ║ should throw if 
+depth limit is reached
+
+    expect(received).rejects.toThrow(expected)
+
+    Expected constructor: UserError
+    Received constructor: TypeError
+
+    Received message: "Cannot read properties of 
+undefined (reading 'select')"
+
+        [0m [90m 92 |[39m 			[36mif[39m 
+(parentFolderId [33m!==[39m [36mnull[39m 
+[33m&&[39m parentFolderId [33m!==[39m 
+[33mPROJECT_ROOT[39m) {
+         [90m 93 |[39m 				[36mawait[39m [36mthis[3
+9m[33m.[39mcheckFolderDepth(parentFolderId[33m,[39m 
+projectId)[33m;[39m
+        [31m[1m>[22m[39m[90m 94 |[39m 				
+[36mawait[39m [36mthis[39m[33m.[39mfindFolderInProj
+ectOrFail(parentFolderId[33m,[39m projectId)[33m;[39m
+         [90m    |[39m 				        [31m[1m^[22m[39m
+         [90m 95 |[39m
+         [90m 96 |[39m 				[90m// Ensure that the 
+target parentFolder isn't a descendant of the current 
+folder.[39m
+         [90m 97 |[39m 				[36mconst[39m 
+parentFolderPath [33m=[39m [36mawait[39m [36mthis[3
+9m[33m.[39mgetFolderTree(parentFolderId[33m,[39m 
+projectId)[33m;[39m[0m
+
+      at FolderService.checkFolderDepth 
+(src/services/folder.service.ts:94:13)
+      at FolderService.createFolder 
+(src/services/folder.service.ts:59:15)
+      at Object.<anonymous> 
+(src/services/__tests__/folder.service.test.ts:57:13)
+      at Object.toThrow (../../node_modules/.pnpm/expect@
+29.6.2/node_modules/expect/build/index.js:218:22)
+      at Object.<anonymous> 
+(src/services/__tests__/folder.service.test.ts:58:14)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 5 passed, 6 total
+Snapshots:   0 total
+Time:        20.318 s
+Ran all test suites matching 
+/src\\services\\__tests__\\folder.service.test.ts/i.
