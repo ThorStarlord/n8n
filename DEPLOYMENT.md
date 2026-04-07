@@ -5,6 +5,15 @@ update the n8n stack running in Portainer.
 
 ---
 
+# Bottom line for your setup:
+
+Every update = 3 commands total:
+
+```bash
+ssh username@VPS_IP
+cd ~/n8n && git pull
+docker compose -f docker-compose.custom.yml up -d --build
+```
 ## Prerequisites
 
 - SSH access to your VPS (key-based preferred)
@@ -74,25 +83,31 @@ Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh username@VPS_IP `
 
 ## Step 3 — Pull the Latest Code on the VPS
 
-### If the repo is already cloned on the VPS
+### Normal case — repo already exists on the VPS (use this for updates)
 
 ```bash
-# Navigate to the repo directory (adjust path if different)
-cd /opt/n8n    # or wherever you cloned it
+# Find the repo if you forgot where it is
+find ~/ /opt /srv -maxdepth 3 -name "docker-compose.yml" 2>/dev/null
 
-# Switch to the correct branch and pull latest changes
+# Navigate to the repo directory (adjust path to match your setup)
+cd ~/n8n    # common locations: ~/n8n  /opt/n8n  /srv/n8n
+
+# Fetch and pull latest changes
 git fetch origin
 git checkout main   # replace with your branch name if different
 git pull
 ```
 
-### If this is the first time / fresh VPS
+### First time only — fresh VPS clone
 
 ```bash
-cd /opt
-sudo git clone --branch main https://github.com/YOUR_USERNAME/n8n.git n8n
+cd ~
+git clone --branch main https://github.com/ThorStarlord/n8n.git n8n
 cd n8n
 ```
+
+> If you get `fatal: destination path 'n8n' already exists` — the repo is
+> already cloned. Use the "already exists" path above instead.
 
 Replace `main` with your feature branch name if you are deploying a specific
 branch.
@@ -101,7 +116,21 @@ branch.
 
 ## Step 4 — Review the Compose File
 
-Confirm the `docker-compose.yml` in the repo looks correct before deploying:
+### Updating (already deployed before) — quick check
+
+Check if `git pull` changed anything in the compose file:
+
+```bash
+git diff HEAD~1 HEAD -- docker-compose.yml
+```
+
+- **No output** → nothing changed. Skip to Step 5.
+- **Output shown** → review the diff. Common things that require action:
+  - New `environment:` variables added → add them in Portainer stack settings too.
+  - `image:` tag changed → confirm you want that version.
+  - New volume mounts → ensure the volumes exist on the host.
+
+### First time / verifying from scratch
 
 ```bash
 cat docker-compose.yml
@@ -122,40 +151,61 @@ nano docker-compose.yml
 
 ---
 
-## Step 5 — Update the Portainer Stack
+## Step 5 — Rebuild and Restart the Container
 
-You have two options. **Option A (Portainer UI)** is simpler.
+This repo uses a **custom Docker image built from source** (`docker-compose.custom.yml`).
+That means after `git pull`, you must rebuild the image so the new code is
+included. The `docker-compose.custom.yml` file itself rarely needs editing
+during a normal update.
 
-### Option A — Portainer Web UI
-
-1. Open Portainer in your browser.
-2. Go to **Stacks** → select your n8n stack.
-3. Click **Editor** (or the pencil/edit icon).
-4. Paste the updated `docker-compose.yml` content (or change the image tag
-   inline).
-5. Click **Deploy the stack** (Portainer pulls the image and recreates the
-   container).
-
-If the stack is linked to a **Git repository**:
-1. Stacks → select stack → **Git** tab.
-2. Click **Pull and redeploy**.
-3. Portainer fetches the latest commit from the repo branch and redeploys.
-
-### Option B — SSH / docker compose directly
+### Updating (already deployed before) — one command
 
 ```bash
-# From the repo directory on the VPS
-cd /opt/n8n
-
-# Pull the new image(s)
-docker compose pull
-
-# Recreate only the n8n service (replace 'n8n' with your service name)
-docker compose up -d --no-deps --force-recreate n8n
-
-# Or bring the full stack up
-docker compose up -d
+cd ~/n8n   # adjust to your repo path
+docker compose -f docker-compose.custom.yml up -d --build
 ```
+
+`--build` rebuilds the image from the updated repo code, then restarts the
+container. That's all that's needed.
+
+### What each part does
+
+```
+git pull          → updates source code on disk
+docker build      → bakes source code into a new Docker image  (--build does this)
+docker compose up → starts container using the new image       (-d runs in background)
+```
+
+The running container is not affected by `git pull` alone — it still uses the
+old image until you rebuild.
+
+### When to edit docker-compose.custom.yml
+
+Almost never during a normal update. Only if you need to change:
+- A port mapping
+- An environment variable (e.g. timezone, encryption key)
+- The database configuration
+
+### First time only — creating the stack from scratch
+
+```bash
+cd ~/n8n
+docker compose -f docker-compose.custom.yml up -d --build
+```
+
+Same command — Docker builds the image and starts the container for the first
+time.
+
+### Portainer UI (if you prefer not to use SSH)
+
+1. Stacks → select your n8n stack → **Editor** tab.
+2. Only update the compose content if `docker-compose.custom.yml` changed in
+   Step 4, otherwise leave it as-is.
+3. Click **Update the stack**.
+
+> Note: Portainer's "Pull and redeploy" only re-pulls images from Docker Hub.
+> Since this setup builds a custom image, you must rebuild via SSH
+> (`--build`) for code changes to take effect.
 
 ---
 
