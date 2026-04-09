@@ -1,0 +1,19 @@
+{
+	"name": "n8n-sync-workflows",
+	"version": "1.0.0",
+	"private": true,
+	"description": "CLI tool to sync local workflow JSON files with n8n folders via the Public API",
+	"type": "module",
+	"scripts": {
+		"push": "node --import tsx/esm index.ts push",
+		"pull": "node --import tsx/esm index.ts pull",
+		"diff": "node --import tsx/esm index.ts diff"
+	},
+	"dependencies": {
+		"picocolors": "^1.1.1"
+	},
+	"devDependencies": {
+		"tsx": "^4.19.3",
+		"typescript": "*"
+	}
+}
