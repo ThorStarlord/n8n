@@ -104,7 +104,7 @@ export declare namespace WorkflowRequest {
 		{},
 		{},
 		WorkflowEntity & { parentFolderId?: string; parentFolderPath?: string },
-		{}
+		{ strict?: string }
 	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;

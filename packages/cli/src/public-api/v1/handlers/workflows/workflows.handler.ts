@@ -53,7 +53,17 @@ export = {
 				);
 			}
 
-			await replaceInvalidCredentials(workflowData as WorkflowEntity, project.id);
+			const { warnings: credentialResolutionWarnings } = await replaceInvalidCredentials(
+				workflowData as WorkflowEntity,
+				project.id,
+			);
+
+			if (req.query.strict === 'true' && credentialResolutionWarnings.length > 0) {
+				return res.status(422).json({
+					message: 'Workflow contains unresolvable credential references',
+					credentialResolutionWarnings,
+				});
+			}
 
 			addNodeIds(workflowData as WorkflowEntity);
 			resolveNodeWebhookIds(workflowData as WorkflowEntity, Container.get(NodeTypes));
@@ -71,6 +81,7 @@ export = {
 				const workflowResponse = {
 					...createdWorkflow,
 					parentFolderId: createdWorkflow.parentFolder?.id || parentFolderId || null,
+					credentialResolutionWarnings,
 				};
 
 				await Container.get(WorkflowHistoryService).saveVersion(
