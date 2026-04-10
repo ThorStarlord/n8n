@@ -44,7 +44,8 @@ export class ExecuteWorkflow implements INodeType {
 				],
 			},
 			{
-				displayName: 'This node is out of date. Please upgrade by removing it and adding a new one',
+				displayName:
+					'This node is out of date. Please upgrade by removing it and adding a new one. Upgrading enables typed input mapping and removes the URL/file sources. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/" target="_blank">Learn more</a>',
 				name: 'outdatedVersionWarning',
 				type: 'notice',
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
@@ -166,7 +167,7 @@ export class ExecuteWorkflow implements INodeType {
 						source: ['parameter'],
 					},
 				},
-				default: '\n\n\n',
+				default: '',
 				required: true,
 				description: 'The workflow JSON code to execute',
 			},
@@ -201,6 +202,7 @@ export class ExecuteWorkflow implements INodeType {
 				name: 'workflowInputs',
 				type: 'resourceMapper',
 				noDataExpression: true,
+				hint: 'These map to the fields defined in the sub-workflow\'s "Execute Sub-workflow Trigger" node.',
 				default: {
 					mappingMode: 'defineBelow',
 					value: null,
