@@ -8,6 +8,7 @@ import {
 	ROLE,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type CredentialResolutionWarning,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -54,7 +55,6 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { IWorkflowResponse } from '@/interfaces';
-import type { CredentialResolutionWarning } from '@/workflow-helpers';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';

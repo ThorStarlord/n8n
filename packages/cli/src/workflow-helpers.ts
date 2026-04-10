@@ -1,3 +1,4 @@
+import type { CredentialResolutionWarning } from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -132,13 +133,7 @@ export function removeDefaultValues(
 	return cleanedSettings;
 }
 
-export interface CredentialResolutionWarning {
-	nodeName: string;
-	credentialType: string;
-	attemptedId: string | null | undefined;
-	attemptedName: string | null | undefined;
-	reason: 'not_found' | 'ambiguous_name';
-}
+export type { CredentialResolutionWarning } from '@n8n/api-types';
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
 export async function replaceInvalidCredentials<T extends IWorkflowBase>(

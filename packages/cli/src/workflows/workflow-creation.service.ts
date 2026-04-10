@@ -16,7 +16,7 @@ import { WorkflowHistoryService } from './workflow-history/workflow-history.serv
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import type { CredentialResolutionWarning } from '@/workflow-helpers';
+import type { CredentialResolutionWarning } from '@n8n/api-types';
 import { EventService } from '@/events/event.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
