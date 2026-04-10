@@ -1067,6 +1067,27 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			});
 	}
 
+	function resolveNodeCredentials(node: INodeUi) {
+		if (node.credentials) {
+			const credentialsStore = useCredentialsStore();
+			Object.keys(node.credentials).forEach((type) => {
+				const cred = node.credentials![type];
+				if (cred && cred.id) {
+					const exists = credentialsStore.allCredentials.find((c) => c.id === cred.id);
+					if (!exists) {
+						const matchByName = credentialsStore.allCredentials.find(
+							(c) => c.type === type && c.name === cred.id,
+						);
+						if (matchByName) {
+							node.credentials![type].id = matchByName.id;
+							node.credentials![type].name = matchByName.name;
+						}
+					}
+				}
+			});
+		}
+	}
+
 	/** @deprecated Use `workflowDocumentStore.setNodes()` instead. */
 	function setNodes(nodes: INodeUi[]): void {
 		nodes.forEach((node) => {
@@ -1086,24 +1107,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				nodeMetadata.value[node.name] = { pristine: true };
 			}
 
-			if (node.credentials) {
-				const credentialsStore = useCredentialsStore();
-				Object.keys(node.credentials).forEach((type) => {
-					const cred = node.credentials![type];
-					if (cred && cred.id) {
-						const exists = credentialsStore.allCredentials.find((c) => c.id === cred.id);
-						if (!exists) {
-							const matchByName = credentialsStore.allCredentials.find(
-								(c) => c.type === type && c.name === cred.id,
-							);
-							if (matchByName) {
-								node.credentials![type].id = matchByName.id;
-								node.credentials![type].name = matchByName.name;
-							}
-						}
-					}
-				});
-			}
+			resolveNodeCredentials(node);
 		});
 
 		workflow.value.nodes = nodes;
@@ -1135,24 +1139,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			nodeMetadata.value[nodeData.name] = {} as INodeMetadata;
 		}
 
-		if (nodeData.credentials) {
-			const credentialsStore = useCredentialsStore();
-			Object.keys(nodeData.credentials).forEach((type) => {
-				const cred = nodeData.credentials![type];
-				if (cred && cred.id) {
-					const exists = credentialsStore.allCredentials.find((c) => c.id === cred.id);
-					if (!exists) {
-						const matchByName = credentialsStore.allCredentials.find(
-							(c) => c.type === type && c.name === cred.id,
-						);
-						if (matchByName) {
-							nodeData.credentials![type].id = matchByName.id;
-							nodeData.credentials![type].name = matchByName.name;
-						}
-					}
-				}
-			});
-		}
+		resolveNodeCredentials(nodeData);
 	}
 
 	/** @deprecated Use `workflowDocumentStore.removeNode()` instead. */

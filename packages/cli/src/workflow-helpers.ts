@@ -375,6 +375,9 @@ export function getActiveVersionUpdateValue(
  * and source so the LLM's input stays visible in logs after the execution resumes.
  */
 export function preserveInputOverride(runDataArray: ITaskData[]): void {
+	if (!runDataArray || runDataArray.length === 0) {
+		return;
+	}
 	const entryToPop = runDataArray.pop()!;
 	const preservedInputOverride = entryToPop.inputOverride;
 	if (preservedInputOverride) {
