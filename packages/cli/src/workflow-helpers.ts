@@ -136,7 +136,7 @@ export function removeDefaultValues(
 export type { CredentialResolutionWarning } from '@n8n/api-types';
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
-export async function replaceInvalidCredentials<T extends IWorkflowBase>(
+export async function replaceInvalidCredentials<T extends Pick<IWorkflowBase, 'nodes'>>(
 	workflow: T,
 	projectId: string,
 ): Promise<{ workflow: T; warnings: CredentialResolutionWarning[] }> {
