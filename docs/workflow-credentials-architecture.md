@@ -46,3 +46,17 @@ To establish guaranteed pipeline compatibility moving forward:
    
 2. **Eager Pre-Render Hydration:**
    The `workflows.store.ts` file now aggressively queries the local `Pinia` credential stores the precise millisecond nodes are dropped or loaded onto a canvas. Any string anomalies correctly identify their local counterparts via `.type` and `.name` matrix checking, immediately validating the JSON prior to rendering to unlock native **Save/Publish** availability without manual interaction.
+
+## Process Failures & Lessons Learned
+
+The legacy codebase hid a deeper architectural failure: an intentional backwards-compatibility measure that silently decayed without explicit schema versioning.
+
+### 1. The Decay of Implicit Fallbacks
+Early V1 workflows stored human-readable strings natively inside `cred.id`. When n8n migrated to proper UUIDs (V2+), a backwards-compatibility fallback was added: *"If UUID fails, assume it's a V1 payload and match the UUID against `cred.name`."* (`c.name === cred.id`). 
+
+When modern V3 imports arrived carrying foreign UUIDs in `id` and the valid human name in `name`, this fallback literally asked: *"Does our local credential's name equal their machine's UUID?"* and failed quietly.
+**Lesson:** Never use "duck typing" implicitly to waterfall through fallbacks on sensitive data contracts. Payloads should carry explicit schema versions (`v1`, `v2`) so decoders know whether `id` should be evaluated as a UUID or a string name. 
+
+### 2. "Happy Path" Integration Blindspots
+Automated UI tests verified that duplicating a node successfully brought over its credentials. Because it occurred on the same machine, the UUID instantly resolved, and the test passed. What failed to be structurally tested was the standard Environmental Migration: importing modern JSON from a *different* tenant.
+**Lesson:** End-to-end integration tests must explicitly mock/sabotage primary identifiers (UUIDs) when executing cross-instance flows to prove that safety safety nets (like string-matched name fallbacks) actually catch edge cases correctly.
