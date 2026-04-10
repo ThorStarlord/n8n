@@ -407,17 +407,21 @@ export = {
 			Object.assign(updateData, updateBody);
 
 			try {
-				const updatedWorkflow = await Container.get(WorkflowService).update(
-					req.user,
-					updateData,
-					id,
-					{
-						forceSave: true, // Skip version conflict check for public API
-						publicApi: true,
-						publishIfActive: true,
-						parentFolderId,
-					},
-				);
+				const { workflow: updatedWorkflow, credentialResolutionWarnings } = await Container.get(
+					WorkflowService,
+				).update(req.user, updateData, id, {
+					forceSave: true, // Skip version conflict check for public API
+					publicApi: true,
+					publishIfActive: true,
+					parentFolderId,
+				});
+
+				if (req.query.strict === 'true' && credentialResolutionWarnings.length > 0) {
+					return res.status(422).json({
+						message: 'Workflow contains unresolvable credential references',
+						credentialResolutionWarnings,
+					});
+				}
 
 				const updatedWorkflowWithFolder = await Container.get(WorkflowRepository).findOne({
 					where: { id },
@@ -427,6 +431,7 @@ export = {
 				const workflowResponse = {
 					...updatedWorkflow,
 					parentFolderId: updatedWorkflowWithFolder?.parentFolder?.id || parentFolderId || null,
+					credentialResolutionWarnings,
 				};
 
 				return res.json(workflowResponse);

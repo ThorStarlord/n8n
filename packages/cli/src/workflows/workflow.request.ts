@@ -83,7 +83,7 @@ export declare namespace WorkflowRequest {
 		{ workflowId: string },
 		{},
 		CreateUpdatePayload,
-		{ forceSave?: string }
+		{ forceSave?: string; strict?: string }
 	>;
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string; projectId: string }>;

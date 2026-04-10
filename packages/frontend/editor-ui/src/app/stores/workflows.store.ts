@@ -1429,6 +1429,26 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			throw new Error('Failed to update workflow');
 		}
 
+		if (updatedWorkflow.credentialResolutionWarnings?.length) {
+			const uniqueWarnings = updatedWorkflow.credentialResolutionWarnings;
+			const lines = uniqueWarnings.map((w) => {
+				if (w.reason === 'ambiguous_name') {
+					return i18n.baseText('workflows.import.credentialWarning.ambiguousName', {
+						interpolate: { name: w.attemptedName ?? w.attemptedId ?? '', type: w.credentialType },
+					});
+				}
+				return i18n.baseText('workflows.import.credentialWarning.notFound', {
+					interpolate: { name: w.attemptedName ?? w.attemptedId ?? '', type: w.credentialType },
+				});
+			});
+			toast.showMessage({
+				title: i18n.baseText('workflows.import.credentialWarning.title'),
+				message: lines.join('<br>'),
+				type: 'warning',
+				duration: 0,
+			});
+		}
+
 		if (id === workflow.value.id) {
 			setWorkflowVersionData({
 				versionId: updatedWorkflow.versionId,

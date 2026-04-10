@@ -1,4 +1,4 @@
-import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import { UpdateWorkflowHistoryVersionDto, type CredentialResolutionWarning } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -302,7 +302,10 @@ export class WorkflowService {
 			expectedChecksum?: string;
 			autosaved?: boolean;
 		} = {},
-	): Promise<WorkflowEntity> {
+	): Promise<{
+		workflow: WorkflowEntity;
+		credentialResolutionWarnings: CredentialResolutionWarning[];
+	}> {
 		const {
 			expectedChecksum,
 			tagIds,
@@ -361,7 +364,8 @@ export class WorkflowService {
 
 		// check credentials for old format - scope to the workflow's owner project
 		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
+		const { warnings: credentialResolutionWarnings } =
+			await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
@@ -510,7 +514,7 @@ export class WorkflowService {
 				publicApi,
 			);
 		}
-		return updatedWorkflow;
+		return { workflow: updatedWorkflow, credentialResolutionWarnings };
 	}
 
 	private async _addToActiveWorkflowManager(

@@ -40,6 +40,14 @@ const ResourceOwnerSchema = z.object({
 	projectName: z.string(),
 });
 
+const CredentialResolutionWarningSchema = z.object({
+	nodeName: z.string(),
+	credentialType: z.string(),
+	attemptedId: z.string().nullable().optional(),
+	attemptedName: z.string().nullable().optional(),
+	reason: z.enum(['not_found', 'ambiguous_name']),
+});
+
 export const SourceControlledFileSchema = z.object({
 	file: z.string(),
 	id: z.string(),
@@ -56,6 +64,7 @@ export const SourceControlledFileSchema = z.object({
 	folderPath: z.array(z.string()).optional(),
 	owner: ResourceOwnerSchema.optional(), // Resource owner can be a personal email or team information
 	publishingError: z.string().optional(),
+	credentialResolutionWarnings: z.array(CredentialResolutionWarningSchema).optional(),
 });
 
 export type SourceControlledFile = z.infer<typeof SourceControlledFileSchema>;

@@ -162,9 +162,14 @@ export const createUpdateWorkflowTool = (
 					sharedWorkflow.projectId,
 				);
 
-			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-				aiBuilderAssisted: true,
-			});
+			const { workflow: updatedWorkflow } = await workflowService.update(
+				user,
+				workflowUpdateData,
+				workflowId,
+				{
+					aiBuilderAssisted: true,
+				},
+			);
 
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;

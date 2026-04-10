@@ -332,6 +332,7 @@ export class WorkflowsController {
 		_res: unknown,
 		@Param('workflowId') workflowId: string,
 		@Body body: UpdateWorkflowDto,
+		@Query query: CreateWorkflowQueryDto,
 	) {
 		const forceSave = req.query.forceSave === 'true';
 		const clientId = req.headers['push-ref'];
@@ -364,8 +365,9 @@ export class WorkflowsController {
 		}
 
 		let updatedWorkflow: WorkflowEntity;
+		let credentialResolutionWarnings: CredentialResolutionWarning[] = [];
 		try {
-			updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
+			const result = await this.workflowService.update(req.user, updateData, workflowId, {
 				tagIds: tags,
 				parentFolderId,
 				forceSave: isSharingEnabled ? forceSave : true,
@@ -373,6 +375,8 @@ export class WorkflowsController {
 				aiBuilderAssisted,
 				autosaved,
 			});
+			updatedWorkflow = result.workflow;
+			credentialResolutionWarnings = result.credentialResolutionWarnings;
 		} catch (error) {
 			if (error instanceof FolderNotFoundError) {
 				throw new NotFoundError(error.message);
@@ -380,12 +384,21 @@ export class WorkflowsController {
 			throw error;
 		}
 
+		if (query.strict && credentialResolutionWarnings.length > 0) {
+			throw new UnprocessableRequestError(
+				'Workflow contains unresolvable credential references',
+				credentialResolutionWarnings
+					.map((w) => `Node "${w.nodeName}" (${w.credentialType}): ${w.reason}`)
+					.join('\n'),
+			);
+		}
+
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
 
 		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
 
-		return { ...updatedWorkflow, scopes, checksum };
+		return { ...updatedWorkflow, scopes, checksum, credentialResolutionWarnings };
 	}
 
 	@Get('/:workflowId/collaboration/write-lock')

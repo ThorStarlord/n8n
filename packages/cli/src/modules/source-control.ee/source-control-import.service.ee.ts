@@ -48,6 +48,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
+import { replaceInvalidCredentials } from '@/workflow-helpers';
 import { assertNever } from '@/utils';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -832,6 +833,13 @@ export class SourceControlImportService {
 
 		const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
+		// Resolve credentials before upsert so resolved references are stored and
+		// any unresolvable references are surfaced as warnings.
+		const { warnings: credentialResolutionWarnings } = await replaceInvalidCredentials(
+			importedWorkflow,
+			personalProject.id,
+		);
+
 		this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
 
 		const upsertResult = await this.workflowRepository.upsert(
@@ -881,6 +889,8 @@ export class SourceControlImportService {
 			id,
 			name: candidate.file,
 			publishingError: finalPublishingError,
+			credentialResolutionWarnings:
+				credentialResolutionWarnings.length > 0 ? credentialResolutionWarnings : undefined,
 		};
 	}
 

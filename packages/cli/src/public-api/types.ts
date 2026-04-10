@@ -112,7 +112,7 @@ export declare namespace WorkflowRequest {
 		{ id: string },
 		{},
 		WorkflowEntity & { parentFolderId?: string; parentFolderPath?: string },
-		{}
+		{ strict?: string }
 	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
