@@ -16,6 +16,7 @@ import { WorkflowHistoryService } from './workflow-history/workflow-history.serv
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { CredentialResolutionWarning } from '@/workflow-helpers';
 import { EventService } from '@/events/event.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
@@ -57,7 +58,10 @@ export class WorkflowCreationService {
 			autosaved?: boolean;
 			uiContext?: string;
 		} = {},
-	): Promise<WorkflowEntity> {
+	): Promise<{
+		savedWorkflow: WorkflowEntity;
+		credentialResolutionWarnings: CredentialResolutionWarning[];
+	}> {
 		const { tagIds, parentFolderId, projectId, autosaved = false, uiContext } = options;
 
 		// Ensure workflow is created as inactive
@@ -79,7 +83,8 @@ export class WorkflowCreationService {
 			effectiveProjectId = personalProject.id;
 		}
 
-		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow, effectiveProjectId);
+		const { warnings: credentialResolutionWarnings } =
+			await WorkflowHelpers.replaceInvalidCredentials(newWorkflow, effectiveProjectId);
 
 		WorkflowHelpers.addNodeIds(newWorkflow);
 
@@ -193,6 +198,6 @@ export class WorkflowCreationService {
 			uiContext,
 		});
 
-		return savedWorkflow;
+		return { savedWorkflow, credentialResolutionWarnings };
 	}
 }

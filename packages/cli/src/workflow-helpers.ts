@@ -132,17 +132,29 @@ export function removeDefaultValues(
 	return cleanedSettings;
 }
 
+export interface CredentialResolutionWarning {
+	nodeName: string;
+	credentialType: string;
+	attemptedId: string | null | undefined;
+	attemptedName: string | null | undefined;
+	reason: 'not_found' | 'ambiguous_name';
+}
+
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
 export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 	workflow: T,
 	projectId: string,
-): Promise<T> {
+): Promise<{ workflow: T; warnings: CredentialResolutionWarning[] }> {
 	const { nodes } = workflow;
-	if (!nodes) return workflow;
+	if (!nodes) return { workflow, warnings: [] };
 
 	// caching
 	const credentialsByName: Record<string, Record<string, INodeCredentialsDetails>> = {};
 	const credentialsById: Record<string, Record<string, INodeCredentialsDetails>> = {};
+
+	const warnings: CredentialResolutionWarning[] = [];
+	// track unique failed lookups to avoid duplicate warnings when multiple nodes share a credential
+	const warnedKeys = new Set<string>();
 
 	// for loop to run DB fetches sequential and use cache to keep pressure off DB
 	// trade-off: longer response time for less DB queries
@@ -186,6 +198,18 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 						id: null,
 						name,
 					};
+
+					const warnKey = `old:${nodeCredentialType}:${name}`;
+					if (!warnedKeys.has(warnKey)) {
+						warnedKeys.add(warnKey);
+						warnings.push({
+							nodeName: node.name,
+							credentialType: nodeCredentialType,
+							attemptedId: null,
+							attemptedName: name,
+							reason: credentials && credentials.length > 1 ? 'ambiguous_name' : 'not_found',
+						});
+					}
 				} else {
 					// get credentials from cache
 					node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
@@ -236,6 +260,18 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 
 				// nothing found - add invalid credentials to cache to prevent further DB checks
 				credentialsById[nodeCredentialType][nodeCredentials.id] = nodeCredentials;
+
+				const warnKey = `new:${nodeCredentialType}:${nodeCredentials.id}`;
+				if (!warnedKeys.has(warnKey)) {
+					warnedKeys.add(warnKey);
+					warnings.push({
+						nodeName: node.name,
+						credentialType: nodeCredentialType,
+						attemptedId: nodeCredentials.id,
+						attemptedName: nodeCredentials.name,
+						reason: credsByName && credsByName.length > 1 ? 'ambiguous_name' : 'not_found',
+					});
+				}
 				continue;
 			}
 
@@ -245,7 +281,7 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 		}
 	}
 
-	return workflow;
+	return { workflow, warnings };
 }
 
 export async function getVariables(workflowId?: string, projectId?: string): Promise<IDataObject> {

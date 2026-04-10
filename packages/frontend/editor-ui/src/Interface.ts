@@ -263,6 +263,13 @@ export interface IWorkflowDb {
 	};
 	activeVersion?: WorkflowHistory | null;
 	checksum?: string;
+	credentialResolutionWarnings?: Array<{
+		nodeName: string;
+		credentialType: string;
+		attemptedId: string | null | undefined;
+		attemptedName: string | null | undefined;
+		reason: 'not_found' | 'ambiguous_name';
+	}>;
 }
 
 // For workflow list we don't need the full workflow data

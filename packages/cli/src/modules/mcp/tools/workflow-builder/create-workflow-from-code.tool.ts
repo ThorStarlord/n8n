@@ -166,7 +166,7 @@ export const createCreateWorkflowFromCodeTool = (
 					effectiveProjectId,
 				);
 
-			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
+			const { savedWorkflow } = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId,
 				parentFolderId: folderId,
 			});

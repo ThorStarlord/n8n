@@ -75,6 +75,7 @@ import { computed, ref, watch } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ExecutionRedactionQueryDto, PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -119,6 +120,7 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
+	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers();
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
@@ -1372,6 +1374,26 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			'/workflows',
 			sendData as unknown as IDataObject,
 		);
+
+		if (newWorkflow.credentialResolutionWarnings?.length) {
+			const uniqueWarnings = newWorkflow.credentialResolutionWarnings;
+			const lines = uniqueWarnings.map((w) => {
+				if (w.reason === 'ambiguous_name') {
+					return i18n.baseText('workflows.import.credentialWarning.ambiguousName', {
+						interpolate: { name: w.attemptedName ?? w.attemptedId ?? '', type: w.credentialType },
+					});
+				}
+				return i18n.baseText('workflows.import.credentialWarning.notFound', {
+					interpolate: { name: w.attemptedName ?? w.attemptedId ?? '', type: w.credentialType },
+				});
+			});
+			toast.showMessage({
+				title: i18n.baseText('workflows.import.credentialWarning.title'),
+				message: lines.join('<br>'),
+				type: 'warning',
+				duration: 0,
+			});
+		}
 
 		const isAIWorkflow = workflowHelpers.containsNodeFromPackage(
 			newWorkflow,

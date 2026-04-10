@@ -54,6 +54,7 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { IWorkflowResponse } from '@/interfaces';
+import type { CredentialResolutionWarning } from '@/workflow-helpers';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -102,14 +103,17 @@ export class WorkflowsController {
 		Object.assign(newWorkflow, body);
 
 		let savedWorkflow: WorkflowEntity;
+		let credentialResolutionWarnings: CredentialResolutionWarning[] = [];
 		try {
-			savedWorkflow = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
+			const result = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
 				tagIds: body.tags,
 				parentFolderId: body.parentFolderId,
 				projectId: body.projectId,
 				autosaved: body.autosaved,
 				uiContext: body.uiContext,
 			});
+			savedWorkflow = result.savedWorkflow;
+			credentialResolutionWarnings = result.credentialResolutionWarnings;
 		} catch (error) {
 			if (error instanceof FolderNotFoundError) {
 				throw new NotFoundError(error.message);
@@ -127,7 +131,7 @@ export class WorkflowsController {
 
 		const checksum = await calculateWorkflowChecksum(savedWorkflow);
 
-		return { ...savedWorkflowWithMetaData, scopes, checksum };
+		return { ...savedWorkflowWithMetaData, scopes, checksum, credentialResolutionWarnings };
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
