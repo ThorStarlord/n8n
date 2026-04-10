@@ -77,6 +77,7 @@ import type { ExecutionRedactionQueryDto, PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
@@ -1084,6 +1085,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			if (!nodeMetadata.value[node.name]) {
 				nodeMetadata.value[node.name] = { pristine: true };
 			}
+
+			if (node.credentials) {
+				const credentialsStore = useCredentialsStore();
+				Object.keys(node.credentials).forEach((type) => {
+					const cred = node.credentials![type];
+					if (cred && cred.id) {
+						const exists = credentialsStore.allCredentials.find((c) => c.id === cred.id);
+						if (!exists) {
+							const matchByName = credentialsStore.allCredentials.find(
+								(c) => c.type === type && c.name === cred.id,
+							);
+							if (matchByName) {
+								node.credentials![type].id = matchByName.id;
+								node.credentials![type].name = matchByName.name;
+							}
+						}
+					}
+				});
+			}
 		});
 
 		workflow.value.nodes = nodes;
@@ -1113,6 +1133,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Init node metadata
 		if (!nodeMetadata.value[nodeData.name]) {
 			nodeMetadata.value[nodeData.name] = {} as INodeMetadata;
+		}
+
+		if (nodeData.credentials) {
+			const credentialsStore = useCredentialsStore();
+			Object.keys(nodeData.credentials).forEach((type) => {
+				const cred = nodeData.credentials![type];
+				if (cred && cred.id) {
+					const exists = credentialsStore.allCredentials.find((c) => c.id === cred.id);
+					if (!exists) {
+						const matchByName = credentialsStore.allCredentials.find(
+							(c) => c.type === type && c.name === cred.id,
+						);
+						if (matchByName) {
+							nodeData.credentials![type].id = matchByName.id;
+							nodeData.credentials![type].name = matchByName.name;
+						}
+					}
+				}
+			});
 		}
 	}
 

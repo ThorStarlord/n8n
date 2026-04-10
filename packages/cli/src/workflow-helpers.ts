@@ -218,7 +218,7 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 				}
 				// no credentials found for ID, check if some exist for name
 				const credsByName = await Container.get(CredentialsRepository).findByNameAndTypeInProject(
-					nodeCredentials.name,
+					nodeCredentials.name || nodeCredentials.id,
 					nodeCredentialType,
 					projectId,
 				);
