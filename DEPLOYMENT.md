@@ -14,6 +14,9 @@ ssh username@VPS_IP
 cd ~/n8n && git pull
 docker compose -f docker-compose.custom.yml up -d --build
 apt update && apt upgrade -y && [ -f /var/run/reboot-required ] && echo "--- REBOOT IS REQUIRED ---"
+docker image prune -a -f
+docker builder prune -f
+sudo reboot
 ```
 ## Prerequisites
 
