@@ -2,6 +2,7 @@ import {
 	ActivateWorkflowDto,
 	ArchiveWorkflowDto,
 	CreateWorkflowDto,
+	CreateWorkflowQueryDto,
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
@@ -63,6 +64,7 @@ import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -87,7 +89,12 @@ export class WorkflowsController {
 	) {}
 
 	@Post('/')
-	async create(req: AuthenticatedRequest, _res: unknown, @Body body: CreateWorkflowDto) {
+	async create(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: CreateWorkflowDto,
+		@Query query: CreateWorkflowQueryDto,
+	) {
 		if (body.id) {
 			const workflowExists = await this.workflowRepository.existsBy({ id: body.id });
 			if (workflowExists) {
@@ -126,6 +133,21 @@ export class WorkflowsController {
 		// @ts-expect-error: This is added as part of addOwnerAndSharings but
 		// shouldn't be returned to the frontend
 		delete savedWorkflowWithMetaData.shared;
+
+		// Strict mode: reject the import when credentials could not be resolved.
+		// This is intended for CI/CD pipelines where a broken credential reference
+		// must block the deployment rather than be silently saved.
+		if (query.strict && credentialResolutionWarnings.length > 0) {
+			throw new UnprocessableRequestError(
+				'Workflow contains unresolvable credential references',
+				credentialResolutionWarnings
+					.map(
+						(w) =>
+							`Node "${w.nodeName}": credential "${w.attemptedName ?? w.attemptedId}" (${w.credentialType}) — ${w.reason === 'ambiguous_name' ? 'multiple matches, cannot determine which to use' : 'not found in this instance'}`,
+					)
+					.join('\n'),
+			);
+		}
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 

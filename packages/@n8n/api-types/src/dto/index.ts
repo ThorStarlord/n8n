@@ -73,6 +73,7 @@ export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-ma
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 
 export { CreateWorkflowDto } from './workflows/create-workflow.dto';
+export { CreateWorkflowQueryDto } from './workflows/create-workflow-query.dto';
 export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export type { CredentialResolutionWarning } from './workflows/credential-resolution-warning';
