@@ -63,3 +63,14 @@ Update-n8.ps1
 docs/update-script-usage.md
 docs/workflow-credentials-architecture.md
 docs/workflow-sync.md
+actrc
+API_IMPORT_TO_FOLDER.md
+DEPLOYMENT.md
+Update-n8n.ps1
+docker-build.log
+workflow-credentials-architecture.md
+workflow-sync.md
+test_output.log
+test_output_utf8.log
+test_output_v2.log
+test_output_v3.log
