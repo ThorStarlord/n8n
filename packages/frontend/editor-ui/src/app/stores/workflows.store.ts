@@ -1072,16 +1072,29 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			const credentialsStore = useCredentialsStore();
 			Object.keys(node.credentials).forEach((type) => {
 				const cred = node.credentials![type];
-				if (cred && cred.id) {
-					const exists = credentialsStore.allCredentials.find((c) => c.id === cred.id);
-					if (!exists) {
-						const matchByName = credentialsStore.allCredentials.find(
+				if (cred) {
+					// 1. Try to find existing credential by exact UUID
+					let match = cred.id
+						? credentialsStore.allCredentials.find((c) => c.id === cred.id)
+						: undefined;
+
+					// 2. If no valid UUID match, try to match by human-readable name in the payload
+					if (!match && cred.name) {
+						match = credentialsStore.allCredentials.find(
+							(c) => c.type === type && c.name === cred.name,
+						);
+					}
+
+					// 3. Fallback for legacy n8n exports where the name was stored inside cred.id
+					if (!match && cred.id) {
+						match = credentialsStore.allCredentials.find(
 							(c) => c.type === type && c.name === cred.id,
 						);
-						if (matchByName) {
-							node.credentials![type].id = matchByName.id;
-							node.credentials![type].name = matchByName.name;
-						}
+					}
+
+					if (match) {
+						node.credentials![type].id = match.id;
+						node.credentials![type].name = match.name;
 					}
 				}
 			});
