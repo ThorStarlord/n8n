@@ -10,6 +10,10 @@ Tag:
   $ref: './../../../handlers/tags/spec/schemas/tag.yml'
 Workflow:
   $ref: './../../../handlers/workflows/spec/schemas/workflow.yml'
+WorkflowWithWarnings:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowWithWarnings.yml'
+CredentialResolutionWarning:
+  $ref: './../../../handlers/workflows/spec/schemas/credentialResolutionWarning.yml'
 WorkflowSettings:
   $ref: './../../../handlers/workflows/spec/schemas/workflowSettings.yml'
 ExecutionList:

@@ -32,6 +32,16 @@ properties:
           type: string
         name:
           type: string
+        publishingError:
+          type: string
+          description: Error message if the workflow could not be published during import.
+        credentialResolutionWarnings:
+          type: array
+          description: >
+            Warnings about credential references in this workflow that could not be resolved to a
+            known credential in the target instance. Omitted when all credentials resolved successfully.
+          items:
+            $ref: '../../../workflows/spec/schemas/credentialResolutionWarning.yml'
   tags:
     type: object
     properties:

@@ -1,0 +1,20 @@
+description: >
+  Unresolvable credential references — returned when `?strict=true` is supplied and the
+  workflow contains one or more credential references that cannot be resolved to a known
+  credential in this instance.
+content:
+  application/json:
+    schema:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - credentialResolutionWarnings
+      properties:
+        message:
+          type: string
+          example: Workflow contains unresolvable credential references
+        credentialResolutionWarnings:
+          type: array
+          items:
+            $ref: '../../../handlers/workflows/spec/schemas/credentialResolutionWarning.yml'

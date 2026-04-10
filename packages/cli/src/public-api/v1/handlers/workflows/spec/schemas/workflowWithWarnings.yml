@@ -1,0 +1,13 @@
+allOf:
+  - $ref: './workflow.yml'
+  - type: object
+    properties:
+      credentialResolutionWarnings:
+        type: array
+        description: >
+          Warnings about credential references in the workflow that could not be resolved to a
+          known credential in this instance. The workflow is still saved, but affected nodes will
+          have broken credentials until they are manually corrected. Present only when one or more
+          warnings were generated; omitted or empty when all credentials resolved successfully.
+        items:
+          $ref: './credentialResolutionWarning.yml'

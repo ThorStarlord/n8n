@@ -54,6 +54,18 @@ put:
   description: Update a workflow. If the workflow is published, the updated version will be automatically re-published.
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
+    - name: strict
+      in: query
+      required: false
+      description: >
+        When `true`, the request fails with 422 if any credential reference in the workflow
+        cannot be resolved to a known credential in this instance. When omitted or `false`,
+        the workflow is saved and unresolvable references are reported as warnings in the
+        response body.
+      schema:
+        type: boolean
+        default: false
+        example: true
   requestBody:
     description: Updated workflow object.
     content:
@@ -63,14 +75,16 @@ put:
     required: true
   responses:
     '200':
-      description: Workflow object
+      description: Workflow object. May include `credentialResolutionWarnings` when one or more credential references could not be resolved.
       content:
         application/json:
           schema:
-            $ref: '../schemas/workflow.yml'
+            $ref: '../schemas/workflowWithWarnings.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
+    '422':
+      $ref: '../../../../shared/spec/responses/unprocessableEntity.yml'

@@ -5,6 +5,19 @@ post:
     - Workflow
   summary: Create a workflow
   description: Create a workflow in your instance.
+  parameters:
+    - name: strict
+      in: query
+      required: false
+      description: >
+        When `true`, the request fails with 422 if any credential reference in the workflow
+        cannot be resolved to a known credential in this instance. When omitted or `false`,
+        the workflow is saved and unresolvable references are reported as warnings in the
+        response body.
+      schema:
+        type: boolean
+        default: false
+        example: true
   requestBody:
     description: Created workflow object.
     content:
@@ -14,17 +27,19 @@ post:
     required: true
   responses:
     '200':
-      description: A workflow object
+      description: A workflow object. May include `credentialResolutionWarnings` when one or more credential references could not be resolved.
       content:
         application/json:
           schema:
-            $ref: '../schemas/workflow.yml'
+            $ref: '../schemas/workflowWithWarnings.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
+    '422':
+      $ref: '../../../../shared/spec/responses/unprocessableEntity.yml'
 get:
   x-eov-operation-id: getWorkflows
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
