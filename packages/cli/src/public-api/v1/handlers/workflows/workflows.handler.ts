@@ -1,5 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowEntity, ProjectRepository, TagRepository, WorkflowRepository } from '@n8n/db';
+import {
+	WorkflowEntity,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	TagRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
@@ -407,14 +413,17 @@ export = {
 			Object.assign(updateData, updateBody);
 
 			try {
-				const { workflow: updatedWorkflow, credentialResolutionWarnings } = await Container.get(
-					WorkflowService,
-				).update(req.user, updateData, id, {
-					forceSave: true, // Skip version conflict check for public API
-					publicApi: true,
-					publishIfActive: true,
-					parentFolderId,
-				});
+				// Pre-check credentials before writing to DB so that strict=true can reject
+				// the request without persisting any changes.
+				const ownerProject =
+					await Container.get(SharedWorkflowRepository).getWorkflowOwningProject(id);
+				if (!ownerProject) {
+					return res.status(404).json({ message: 'Not Found' });
+				}
+				const { warnings: credentialResolutionWarnings } = await replaceInvalidCredentials(
+					updateData,
+					ownerProject.id,
+				);
 
 				if (req.query.strict === 'true' && credentialResolutionWarnings.length > 0) {
 					return res.status(422).json({
@@ -422,6 +431,18 @@ export = {
 						credentialResolutionWarnings,
 					});
 				}
+
+				const { workflow: updatedWorkflow } = await Container.get(WorkflowService).update(
+					req.user,
+					updateData,
+					id,
+					{
+						forceSave: true, // Skip version conflict check for public API
+						publicApi: true,
+						publishIfActive: true,
+						parentFolderId,
+					},
+				);
 
 				const updatedWorkflowWithFolder = await Container.get(WorkflowRepository).findOne({
 					where: { id },
