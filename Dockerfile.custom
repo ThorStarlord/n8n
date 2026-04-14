@@ -32,13 +32,14 @@ RUN NODE_OPTIONS=--max-old-space-size=6144 pnpm build
 
 # Verify openapi.yml was bundled into dist. The build.mjs script runs
 # `pnpm openapi bundle` with { silent: true }, so failures are suppressed.
-# If the file is missing, fall back to copying the raw source file so the
-# runtime OpenAPI validator always finds it.
-RUN SPEC_SRC="/build/packages/cli/src/public-api/v1/openapi.yml"; \
-    SPEC_DIST="/build/packages/cli/dist/public-api/v1/openapi.yml"; \
+# If the file is missing, copy the entire spec source tree so that the entry
+# openapi.yml and all its $ref targets are present and resolvable at runtime.
+RUN SPEC_SRC_DIR="/build/packages/cli/src/public-api/v1"; \
+    SPEC_DIST_DIR="/build/packages/cli/dist/public-api/v1"; \
+    SPEC_DIST="$SPEC_DIST_DIR/openapi.yml"; \
     if [ ! -f "$SPEC_DIST" ]; then \
-        echo "WARNING: openapi.yml missing from dist, copying raw source as fallback"; \
-        cp "$SPEC_SRC" "$SPEC_DIST"; \
+        echo "WARNING: openapi.yml missing from dist, copying all spec source files"; \
+        cp -r "$SPEC_SRC_DIR/." "$SPEC_DIST_DIR/"; \
     fi; \
     echo "openapi.yml OK:"; ls -la "$SPEC_DIST"
 
