@@ -30,6 +30,18 @@ RUN DOCKER_BUILD=1 pnpm install --frozen-lockfile
 # Build the entire monorepo (TypeScript -> JavaScript)
 RUN NODE_OPTIONS=--max-old-space-size=6144 pnpm build
 
+# Verify openapi.yml was bundled into dist. The build.mjs script runs
+# `pnpm openapi bundle` with { silent: true }, so failures are suppressed.
+# If the file is missing, fall back to copying the raw source file so the
+# runtime OpenAPI validator always finds it.
+RUN SPEC_SRC="/build/packages/cli/src/public-api/v1/openapi.yml"; \
+    SPEC_DIST="/build/packages/cli/dist/public-api/v1/openapi.yml"; \
+    if [ ! -f "$SPEC_DIST" ]; then \
+        echo "WARNING: openapi.yml missing from dist, copying raw source as fallback"; \
+        cp "$SPEC_SRC" "$SPEC_DIST"; \
+    fi; \
+    echo "openapi.yml OK:"; ls -la "$SPEC_DIST"
+
 # ============================================================
 # Stage 2: Runner
 # Lean production image. Only contains what's needed to run n8n.
