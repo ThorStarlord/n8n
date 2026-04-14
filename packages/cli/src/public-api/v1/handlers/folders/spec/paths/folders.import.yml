@@ -25,7 +25,7 @@ post:
             workflows:
               type: array
               items:
-                $ref: '../../workflows/spec/schemas/workflow.yml'
+                $ref: '../../../workflows/spec/schemas/workflow.yml'
             children:
               type: array
               items:
