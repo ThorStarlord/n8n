@@ -45,8 +45,8 @@ export class FolderService {
 				where: {
 					name,
 					homeProject: { id: projectId },
-					parentFolder:
-						!parentFolderId || parentFolderId === PROJECT_ROOT ? IsNull() : { id: parentFolderId },
+					parentFolderId:
+						!parentFolderId || parentFolderId === PROJECT_ROOT ? IsNull() : parentFolderId,
 				},
 			});
 			if (existing) {
