@@ -50,6 +50,16 @@ pnpm lint                      # required before commit
 pnpm test <file>               # run from inside the package directory
 ```
 
+## Secret Hygiene
+
+- This repository is public-facing: never commit or echo real credentials.
+- In committed config/docs/examples, use runtime vars or placeholders only:
+	`${VAR_NAME:?set-in-runtime}`, `${VAR_NAME:-}`, or `CHANGE_ME`.
+- If a file contains a plaintext secret, replace it immediately and call out
+	required credential rotation steps.
+- Prefer redacted terminal snippets in PRs/issues; do not paste auth headers,
+	tokens, or `.env` contents.
+
 ## Key Packages
 
 | Package | Purpose |

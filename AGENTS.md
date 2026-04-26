@@ -214,6 +214,38 @@ titles, test descriptions, and Linear URLs.
 - **Linear references:** Never include the URL slug
   (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
 
+### Secret Hygiene (Public Repo)
+
+Treat all repository content as public by default. Secrets must never be
+committed to tracked files, commit messages, PR descriptions, screenshots, or
+chat transcripts.
+
+**Rules:**
+
+- **No inline secrets:** Never hardcode passwords, API keys, tokens, webhook
+  secrets, JWTs, or encryption keys in `.yml`, `.env`, `.md`, or source files.
+- **Use placeholders or runtime env vars:** In committed config files, use
+  `${VAR_NAME:?set-in-runtime}` for required values and `${VAR_NAME:-}` for
+  optional values.
+- **Commit templates, not values:** If needed, commit `*.example` templates
+  with safe placeholders like `CHANGE_ME`.
+- **Do not paste sensitive outputs:** Avoid terminal/log output that includes
+  credentials when sharing snippets in issues/PRs.
+
+**Before commit (quick check):**
+
+```bash
+git diff --cached | rg -i "(password\s*=|api[_-]?key|secret|token|authorization:|whsec_|sk-[a-z0-9]|-----BEGIN)"
+```
+
+**If a secret is committed (incident protocol):**
+
+1. Rotate/revoke exposed credentials immediately.
+2. Replace values in current files with placeholders/runtime env references.
+3. Rewrite git history to purge leaked values if the repository is public.
+4. Force-push cleaned history and invalidate old credentials everywhere.
+5. Document the process gap and add a guardrail (hook/checklist/instruction).
+
 ## Github Guidelines
 - When creating a PR, use the conventions in
   `.github/pull_request_template.md` and
