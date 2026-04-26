@@ -262,15 +262,14 @@ export class FolderRepository extends Repository<Folder> {
 		projectId: string,
 		em?: EntityManager,
 	): Promise<Folder> {
-		const manager = em ?? this.manager;
-		return await manager.findOneOrFail(Folder, {
-			where: {
-				id: folderId,
-				homeProject: {
-					id: projectId,
-				},
-			},
-		});
+		const qb = em ? em.createQueryBuilder(Folder, 'folder') : this.createQueryBuilder('folder');
+		const folder = await qb
+			.where('folder.id = :folderId AND folder.projectId = :projectId', { folderId, projectId })
+			.getOne();
+		if (!folder) {
+			throw new Error(`Folder ${folderId} not found in project ${projectId}`);
+		}
+		return folder;
 	}
 
 	async moveAllToFolder(
