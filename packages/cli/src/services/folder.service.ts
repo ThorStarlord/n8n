@@ -8,7 +8,6 @@ import { Folder, FolderTagMappingRepository, FolderRepository, WorkflowRepositor
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
-import { IsNull } from '@n8n/typeorm';
 import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -41,14 +40,15 @@ export class FolderService {
 
 	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string, upsert = false) {
 		if (upsert) {
-			const existing = await this.folderRepository.findOne({
-				where: {
-					name,
-					homeProject: { id: projectId },
-					parentFolderId:
-						!parentFolderId || parentFolderId === PROJECT_ROOT ? IsNull() : parentFolderId,
-				},
-			});
+			const qb = this.folderRepository
+				.createQueryBuilder('folder')
+				.where('folder.name = :name AND folder.projectId = :projectId', { name, projectId });
+			if (!parentFolderId || parentFolderId === PROJECT_ROOT) {
+				qb.andWhere('folder.parentFolderId IS NULL');
+			} else {
+				qb.andWhere('folder.parentFolderId = :parentFolderId', { parentFolderId });
+			}
+			const existing = await qb.getOne();
 			if (existing) {
 				return existing;
 			}

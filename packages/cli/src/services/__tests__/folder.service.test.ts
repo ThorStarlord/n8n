@@ -45,7 +45,12 @@ describe('FolderService', () => {
 
 		it('should return existing folder if upsert is true and name exists in same parent', async () => {
 			const existing = { id: 'existing-id', name: 'test' };
-			folderRepository.findOne.mockResolvedValue(existing as any);
+			const qbMock = {
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(existing),
+			};
+			folderRepository.createQueryBuilder.mockReturnValue(qbMock as any);
 
 			const result = await service.createFolder({ name: 'test' }, projectId, true);
 
