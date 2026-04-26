@@ -123,6 +123,28 @@ const parents = getParentNodes(connectionsByDestination, 'NodeName', 'main', 1);
 const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 ```
 
+### TypeORM Query Rules
+
+The n8n TypeORM fork does **not** convert named parameters to PostgreSQL
+positional parameters (`$1`, `$2`) in all code paths. Violating these rules
+produces `syntax error at or near ":"` at runtime on PostgreSQL:
+
+- **Never use relation conditions in `findOne`/`findOneOrFail`** — code like
+  `{ where: { homeProject: { id } } }` generates a JOIN with named params.
+  Use an explicit `createQueryBuilder` with the FK column directly instead:
+  ```typescript
+  // ✗ breaks on PostgreSQL
+  await repo.findOne({ where: { parentFolder: { id: parentFolderId } } });
+
+  // ✓ safe
+  await repo.createQueryBuilder('f')
+    .where('f.parentFolderId = :parentFolderId', { parentFolderId })
+    .getOne();
+  ```
+- **Never embed `getQuery()` output inside a raw CTE string** — named params
+  in the inner query appear as literals in the outer SQL. Use iterative loops
+  instead of `WITH RECURSIVE` when walking parent chains.
+
 ### TypeScript Best Practices
 - **NEVER use `any` type** - use proper types or `unknown`
 - **Avoid type casting with `as`** - use type guards or type predicates instead (except in test code where `as` is acceptable)
