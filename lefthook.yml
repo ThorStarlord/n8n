@@ -32,6 +32,11 @@ pre-commit:
       skip:
         - merge
         - rebase
+    secret_hygiene_check:
+      run: node scripts/check-secrets.mjs
+      skip:
+        - merge
+        - rebase
     playwright_janitor:
       glob: 'packages/testing/playwright/**/*.ts'
       run: |

@@ -123,33 +123,20 @@ export class FolderService {
 	}
 
 	private async checkFolderDepth(parentFolderId: string, _projectId: string) {
-		const baseQuery = this.folderRepository
-			.createQueryBuilder('folder')
-			.select('folder.id', 'id')
-			.addSelect('folder.parentFolderId', 'parentFolderId')
-			.where('folder.id = :parentFolderId', { parentFolderId });
+		let currentId: string | null = parentFolderId;
+		let depth = 0;
 
-		const recursiveQuery = this.folderRepository
-			.createQueryBuilder('f')
-			.select('f.id', 'id')
-			.addSelect('f.parentFolderId', 'parentFolderId')
-			.innerJoin('folder_path', 'fp', 'f.id = fp.parentFolderId');
-
-		const depthQuery = this.folderRepository
-			.createQueryBuilder()
-			.addCommonTableExpression(
-				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
-				'folder_path',
-				{ recursive: true },
-			)
-			.select('COUNT(*)', 'depth')
-			.from('folder_path', 'fp');
-
-		const result = await depthQuery.getRawOne<{ depth: string }>();
-		const depth = parseInt(result?.depth ?? '0', 10);
-
-		if (depth >= FolderService.MAX_FOLDER_DEPTH) {
-			throw new UserError(`Folder depth limit reached (max ${FolderService.MAX_FOLDER_DEPTH})`);
+		while (currentId !== null) {
+			const folder = await this.folderRepository.findOne({
+				where: { id: currentId },
+				select: { id: true, parentFolderId: true },
+			});
+			if (!folder) break;
+			depth++;
+			if (depth >= FolderService.MAX_FOLDER_DEPTH) {
+				throw new UserError(`Folder depth limit reached (max ${FolderService.MAX_FOLDER_DEPTH})`);
+			}
+			currentId = folder.parentFolderId;
 		}
 	}
 
