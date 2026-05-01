@@ -517,6 +517,60 @@ export = {
 			}
 		},
 	],
+	archiveWorkflow: [
+		apiKeyHasScope('workflow:delete'),
+		projectScope('workflow:delete', 'workflow'),
+		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+
+			try {
+				const workflow = await Container.get(WorkflowService).archive(req.user, id, {
+					publicApi: true,
+				});
+
+				if (!workflow) {
+					return res.status(404).json({ message: 'Not Found' });
+				}
+
+				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: 'Not Found' });
+				}
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+				throw error;
+			}
+		},
+	],
+	unarchiveWorkflow: [
+		apiKeyHasScope('workflow:delete'),
+		projectScope('workflow:delete', 'workflow'),
+		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+
+			try {
+				const workflow = await Container.get(WorkflowService).unarchive(req.user, id, {
+					publicApi: true,
+				});
+
+				if (!workflow) {
+					return res.status(404).json({ message: 'Not Found' });
+				}
+
+				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: 'Not Found' });
+				}
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+				throw error;
+			}
+		},
+	],
 	getWorkflowTags: [
 		apiKeyHasScope('workflowTags:list'),
 		projectScope('workflow:read', 'workflow'),

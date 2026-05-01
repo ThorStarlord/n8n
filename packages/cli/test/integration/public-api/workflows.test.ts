@@ -1246,6 +1246,119 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 });
 
+describe('POST /workflows/:id/archive', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/archive', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/workflows/2/archive', 'abcXYZ'),
+	);
+
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.post('/workflows/2/archive');
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should archive workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.id).toEqual(workflow.id);
+		expect(response.body.isArchived).toBe(true);
+		expect(response.body.active).toBe(false);
+
+		const dbWorkflow = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(dbWorkflow?.isArchived).toBe(true);
+	});
+
+	test('should deactivate an active workflow when archiving', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isArchived).toBe(true);
+		expect(response.body.active).toBe(false);
+		expect(response.body.activeVersionId).toBeNull();
+
+		expect(await workflowRepository.isActive(workflow.id)).toBe(false);
+	});
+
+	test('should return 400 when archiving an already-archived workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+		await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should archive non-owned workflow when owner', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/archive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isArchived).toBe(true);
+
+		const dbWorkflow = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(dbWorkflow?.isArchived).toBe(true);
+	});
+});
+
+describe('POST /workflows/:id/unarchive', () => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('post', '/workflows/2/unarchive', null),
+	);
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/workflows/2/unarchive', 'abcXYZ'),
+	);
+
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.post('/workflows/2/unarchive');
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should unarchive workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+		await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.id).toEqual(workflow.id);
+		expect(response.body.isArchived).toBe(false);
+
+		const dbWorkflow = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(dbWorkflow?.isArchived).toBe(false);
+	});
+
+	test('should return 400 when unarchiving a non-archived workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should unarchive non-owned workflow when owner', async () => {
+		const workflow = await createWorkflow({}, member);
+		await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isArchived).toBe(false);
+
+		const dbWorkflow = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(dbWorkflow?.isArchived).toBe(false);
+	});
+});
+
 describe('POST /workflows', () => {
 	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows', null));
 
